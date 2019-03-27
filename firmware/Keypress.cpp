@@ -10,7 +10,7 @@ namespace std {
 Keypress::Keypress()
 {
     activations = {{ }};
-    candidates = {0, 0, 0};
+    candidates = {0};
 
     lastChange = 0;
     wasPress = false;
@@ -19,7 +19,7 @@ Keypress::Keypress()
 Keypress::Keypress(Activations acts) 
 {
     activations = acts;
-    candidates = {0, 0, 0};
+    candidates = {0};
 
     lastChange = 0;
     wasPress = false;

@@ -4,6 +4,7 @@
 
 #ifndef KEYPRESS_H
 #define KEYPRESS_H
+
 using Modifier = std::vector<std::pair<bool, uint32_t>>;
 using Activations = std::array<Modifier, 3>;
 

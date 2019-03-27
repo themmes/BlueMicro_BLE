@@ -25,6 +25,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef KEY_H
 #define KEY_H
 
+#define DEBOUNCE_TIME 1 // 1*10ms = 10ms debounce time
+
 using Durations = std::array<uint8_t, 3>;
 using Keycodes = std::array<uint16_t, 3>;
 using Method = std::vector<std::pair<bool, uint32_t>>;
@@ -36,64 +38,50 @@ class Key
         //sets the keycode and duration for a given index and code
         void setInfo(std::size_t i, uint32_t activation) 
         {
-            keycodes = {0, 0, 0};
             //set the keycode to the first 8 bits of the code 
             keycodes[i] = static_cast<uint16_t>(activation & 0x0000FFFF);
 
             //set the duration to the 9-14th bits of the code
-            durations[i] = static_cast<uint16_t>((activation & 0x00FF0000) >> 16);
+            durations[i] = static_cast<uint8_t>((activation & 0x00FF0000) >> 16);
         };
 
         Keypress state;
 
-        Durations durations;
-        Keycodes keycodes;
+        Durations durations {{0}};
+        Keycodes keycodes {{0}};
 
     public:
-        Key() 
+        Key() : state{{ }} {}
+
+        //default activation: press for minimum 0 ms
+        Key(uint32_t activation) : state {{ {{ {false, DEBOUNCE_TIME} }} }} 
         {
-            state = Keypress {{ }};
-            durations = {0, 0, 0}; 
-        }
-
-        Key(uint32_t activation) 
-        {
-            durations = {0, 0, 0}; 
-
-            //default activation: press for minimum 0 ms
-            state = Keypress {{ {{ {false, 0} }} }}; 
-
             //set the keycode and activation
             setInfo(0, activation);
         }
 
-        Key(Method m1, uint32_t a1)
+        Key(Method m1, uint32_t a1): state {{ m1 }} 
         {
-            durations = {0, 0, 0}; 
-            state = Keypress {{ m1 }};
             setInfo(0, a1);
         }
 
-        Key(Method m1, uint32_t a1, Method m2, uint32_t a2)
+        Key(Method m1, uint32_t a1, Method m2, uint32_t a2): state {{ m1, m2 }} 
         {
-            durations = {0, 0, 0}; 
-            state = Keypress {{ m1, m2 }};
             setInfo(0, a1);
-            setInfo(0, a2);
+            setInfo(1, a2);
         }
 
         Key(Method m1, uint32_t a1, Method m2, uint32_t a2, Method m3, uint32_t a3)
+            : state {{ m1, m2, m3 }}
         {
-            durations = {0, 0, 0}; 
-            state = Keypress {{ m1, m2, m3 }};
             setInfo(0, a1);
-            setInfo(0, a2);
-            setInfo(0, a3);
+            setInfo(1, a2);
+            setInfo(2, a3);
         }
 
 
         void press(unsigned long currentMillis) { state.press(currentMillis); }
-        void clear(unsigned long currentMillis) { state.press(currentMillis); }
+        void clear(unsigned long currentMillis) { state.clear(currentMillis); }
 
         /*
          * return a pair of the keycode and activation duration
