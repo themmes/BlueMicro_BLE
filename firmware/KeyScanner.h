@@ -27,7 +27,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "keyboard_config.h"
 #include "firmware_config.h"
 #include "keymap.h"
-#include "KeyState.h"
 
 #ifndef KEYSCANNER_H
 #define KEYSCANNER_H
@@ -43,7 +42,10 @@ class KeyScanner {
         static unsigned long getLastPressed();
         static bool layerChanged;
         static bool reportEmpty;
+
         static uint8_t localLayer;
+        static uint8_t currentLayer;
+
         static uint8_t layerMode;
         static uint8_t currentReport[8];
 

@@ -46,7 +46,7 @@ bool KeyScanner::scanMatrix(const int& currentState,unsigned long currentMillis,
             {
                 if((currentMillis - timestamps[row][col]) >= DEBOUNCETIME)
                 {
-                    matrix[row][col].press(currentMillis);
+                    matrix[currentLayer][row][col].press(currentMillis);
                     lastPressed = currentMillis;
                 }
                 else // not enough debounce time
@@ -62,7 +62,7 @@ bool KeyScanner::scanMatrix(const int& currentState,unsigned long currentMillis,
         }
         else // key not pressed
         {
-            matrix[row][col].clear(currentMillis);
+            matrix[currentLayer][row][col].clear(currentMillis);
             timestamps[row][col] = 0;
         }
 }
@@ -148,10 +148,10 @@ void KeyScanner::updateBuffer(uint8_t layer)
     bool emptyOneshot = false;
 
     for(int row = 0; row < MATRIX_ROWS; ++row) {
-        for (auto& key : matrix[row]) 
+        for (auto& key : matrix[layer][row]) 
         {
             //pair of activation/duration
-            auto activation = key.getPair(layer);
+            auto activation = key.getPair();
 
             if (activation.first != 0) 
             {
@@ -252,6 +252,8 @@ bool KeyScanner::updateLayer()
         }
     }
 
+    currentLayer = layerChanged;
+
     layerChanged = (prevlayer != localLayer);
     return layerChanged;
 }
@@ -338,6 +340,7 @@ uint8_t KeyScanner::remoteReport[8]  = {0, 0, 0 ,0, 0, 0, 0, 0};
 bool    KeyScanner::layerChanged = false;
 bool    KeyScanner::reportEmpty = true;
 uint8_t KeyScanner::localLayer = 0;
+uint8_t KeyScanner::currentLayer = 0;
 uint8_t KeyScanner::remoteLayer = 0;
 uint8_t KeyScanner::remoteMod = 0;
 uint8_t KeyScanner::currentMod = 0;
