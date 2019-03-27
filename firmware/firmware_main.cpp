@@ -52,7 +52,7 @@ void setup() {
     setupPWM();
   #endif
   // Set up keyboard matrix and start advertising
-  setupKeymap();
+  // setupKeymap();
   setupMatrix();
   startAdv(); 
 };
