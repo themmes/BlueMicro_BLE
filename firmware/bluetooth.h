@@ -25,7 +25,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #undef min
 #undef max
 
-#include "KeyScanner.h"
+#include "Keyboard.h"
 #include "battery.h"
 
 

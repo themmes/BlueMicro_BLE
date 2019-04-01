@@ -16,9 +16,9 @@ Keypress::Keypress()
     wasPress = false;
 }
 
-Keypress::Keypress(Activations acts) 
+Keypress::Keypress(Methods ms) 
 {
-    activations = acts;
+    activations = ms;
     candidates = {0};
 
     lastChange = 0;

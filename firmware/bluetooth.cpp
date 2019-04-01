@@ -20,8 +20,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "bluetooth.h"
 
 BLEDis bledis;                                                                    // Device Information Service
-extern KeyScanner keys;
-
 
 #if BLE_LIPO_MONITORING == 1 
 extern BLEBas blebas; 
@@ -197,20 +195,20 @@ void startAdv(void)
 #if BLE_CENTRAL == 1
 void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
 {
-  LOG_LV1("CB NOT","notify_callback: Length %i data[0] %i" ,len, data[0]);
-  if (len>0)  // check if there really is data...
-  {
-     if (chr->uuid == KBLinkClientChar_Layers.uuid){
-      LOG_LV1("CB NOT","notify_callback: Layers Data");
-          KeyScanner::updateRemoteLayer(data[0]);  // Layer is only a single uint8
-      }
+    LOG_LV1("CB NOT","notify_callback: Length %i data[0] %i" ,len, data[0]);
+    if (len>0)  // check if there really is data...
+    {
+        if (chr->uuid == KBLinkClientChar_Layers.uuid){
+            LOG_LV1("CB NOT","notify_callback: Layers Data");
+            Keyboard::updateRemoteLayer(data[0]);  // Layer is only a single uint8
+        }
 
-    if (chr->uuid == KBLinkClientChar_Buffer.uuid){
-      LOG_LV1("CB NOT","notify_callback: Buffer Data");
-          KeyScanner::updateRemoteReport(data[0],data[1],data[2], data[3],data[4], data[5], data[6]);
-      }
-      
-  }
+        if (chr->uuid == KBLinkClientChar_Buffer.uuid){
+            LOG_LV1("CB NOT","notify_callback: Buffer Data");
+            Keyboard::updateRemoteReport( {data[0], data[1], data[2], data[3],
+                    data[4], data[5], data[6]} );
+        }
+    }
 }
 #endif
 /**************************************************************************************************************************/
@@ -256,7 +254,7 @@ LOG_LV1("CB_CHR","layer_request_callback: len %i offset %i  data %i" ,len, offse
       if (len>0)
       {
         // update state
-        KeyScanner::updateRemoteLayer(data[offset]);
+        Keyboard::updateRemoteLayer(data[offset]);
       }  
 }
 #endif
@@ -328,8 +326,8 @@ void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason)
   (void) reason;
   LOG_LV1("CENTRL","Disconnected"  );
   // if the half disconnects, we need to make sure that the received buffer is set to empty.
-            KeyScanner::updateRemoteLayer(0);  // Layer is only a single uint8
-           KeyScanner::updateRemoteReport(0,0,0, 0,0, 0, 0);
+            Keyboard::updateRemoteLayer(0);  // Layer is only a single uint8
+           Keyboard::updateRemoteReport( {0, 0, 0, 0, 0, 0, 0} );
 }
 #endif
 
@@ -373,26 +371,33 @@ void sendlayer(uint8_t layer)
 /**************************************************************************************************************************/
 void sendKeys(uint8_t currentReport[8])
 {
-    #if BLE_HID == 1  
-        uint8_t keycode[6];
-        uint8_t layer = 0;
-        uint8_t mods = 0;
-        mods = KeyScanner::currentReport[0];                                                 // modifiers
-        keycode[0] = KeyScanner::currentReport[1];                                           // Buffer 
-        keycode[1] = KeyScanner::currentReport[2];                                           // Buffer 
-        keycode[2] = KeyScanner::currentReport[3];                                           // Buffer 
-        keycode[3] = KeyScanner::currentReport[4];                                           // Buffer 
-        keycode[4] = KeyScanner::currentReport[5];                                           // Buffer 
-        keycode[5] = KeyScanner::currentReport[6];                                           // Buffer 
-        layer = KeyScanner::currentReport[7];                                                // Layer
-        blehid.keyboardReport(mods,  keycode); 
-    #endif
-    #if BLE_PERIPHERAL ==1  
-        KBLinkChar_Buffer.notify(KeyScanner::currentReport,7);
-    #endif
-    #if BLE_CENTRAL ==1
-         ; // Only send layer to slaves - send nothing here
-    #endif 
+#if BLE_HID == 1  
+    uint8_t keycode[6];
+    uint8_t layer = 0;
+    uint8_t mods = 0;
+
+    //modifiers
+    mods = currentReport[0];
+
+    //keycodes
+    keycode[0] = currentReport[1];
+    keycode[1] = currentReport[2];
+    keycode[2] = currentReport[3];
+    keycode[3] = currentReport[4];
+    keycode[4] = currentReport[5];
+    keycode[5] = currentReport[6];
+
+    //layer
+    layer = currentReport[7];
+
+    blehid.keyboardReport(mods, keycode); 
+#endif
+#if BLE_PERIPHERAL == 1  
+    KBLinkChar_Buffer.notify(currentReport, 7);
+#endif
+#if BLE_CENTRAL == 1
+    ; // Only send layer to slaves - send nothing here
+#endif 
 }
 /**************************************************************************************************************************/
 void sendRelease(uint8_t currentReport[8])

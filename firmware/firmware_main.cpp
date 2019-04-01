@@ -29,8 +29,6 @@ byte columns[] MATRIX_COL_PINS;     // Contains the GPIO Pin Numbers defined in 
 
 const uint8_t boot_mode_commands [BOOT_MODE_COMMANDS_COUNT][2] BOOT_MODE_COMMANDS;
 
-KeyScanner keys;
-
 bool isReportedReleased = true;
 uint8_t monitoring_state = STATE_BOOT_INITIALIZE;
 
@@ -52,7 +50,7 @@ void setup() {
     setupPWM();
   #endif
   // Set up keyboard matrix and start advertising
-  // setupKeymap();
+  setupKeymap();
   setupMatrix();
   startAdv(); 
 };
@@ -104,7 +102,7 @@ void scanMatrix() {
 
       pindata = NRF_GPIO->IN;                                         // read all pins at once
      for (int i = 0; i < MATRIX_COLS; ++i) {
-      KeyScanner::scanMatrix((pindata>>(columns[i]))&1, millis(), j, i);       // This function processes the logic values and does the debouncing
+      Keyboard::scanMatrix((pindata>>(columns[i]))&1, millis(), j, i);       // This function processes the logic values and does the debouncing
       pinMode(columns[i], INPUT);                                     //'disables' the column that just got looped thru
      }
     pinMode(rows[j], INPUT);                                          //'disables' the row that was just scanned
@@ -114,68 +112,93 @@ void scanMatrix() {
 // Communication with computer and other boards
 /**************************************************************************************************************************/
 void sendKeyPresses() {
-   KeyScanner::getReport();                                            // get state data - Data is in KeyScanner::currentReport  
-   if (!(KeyScanner::reportEmpty))  //any key presses anywhere?
-   {                                                                              
-        sendKeys(KeyScanner::currentReport);
+    //update state data - Data is in Keyboard::currentReport  
+    Keyboard::updateReport(); 
+    if (!(Keyboard::reportEmpty()))  //any key presses anywhere?
+    {                                                                              
+        //send the current report
+        //and first retreive the underlying c-style array from the std array
+        sendKeys(Keyboard::getCurrentReport().data());
         isReportedReleased = false;
-        LOG_LV1("MXSCAN","SEND: %i %i %i %i %i %i %i %i %i %i" ,millis(),KeyScanner::currentReport[0], KeyScanner::currentReport[1],KeyScanner::currentReport[2],KeyScanner::currentReport[3], KeyScanner::currentReport[4],KeyScanner::currentReport[5], KeyScanner::currentReport[6],KeyScanner::currentReport[7] );        
+
+        LOG_LV1("MXSCAN","SEND: %i %i %i %i %i %i %i %i %i %i", millis(),
+                Keyboard::getCurrentReport()[0], Keyboard::getCurrentReport()[1],
+                Keyboard::getCurrentReport()[2], Keyboard::getCurrentReport()[3], 
+                Keyboard::getCurrentReport()[4], Keyboard::getCurrentReport()[5], 
+                Keyboard::getCurrentReport()[6], Keyboard::getCurrentReport()[7]);        
     }
-   else                                                                  //NO key presses anywhere
-   {
-    if ((!isReportedReleased)){
-      sendRelease(KeyScanner::currentReport);  
-      isReportedReleased = true;                                         // Update flag so that we don't re-issue the message if we don't need to.
-      LOG_LV1("MXSCAN","RELEASED: %i %i %i %i %i %i %i %i %i %i" ,millis(),KeyScanner::currentReport[0], KeyScanner::currentReport[1],KeyScanner::currentReport[2],KeyScanner::currentReport[3], KeyScanner::currentReport[4],KeyScanner::currentReport[5], KeyScanner::currentReport[6],KeyScanner::currentReport[7] ); 
+    //NO key presses anywhere
+    else                                                                  
+    {
+        if ((!isReportedReleased)){
+            sendRelease(Keyboard::getCurrentReport().data());  
+            
+            // Update flag so that we don't re-issue the message if we don't need to.
+            isReportedReleased = true;                                         
+
+            LOG_LV1("MXSCAN","RELEASED: %i %i %i %i %i %i %i %i %i %i", millis(),
+                    Keyboard::getCurrentReport()[0], Keyboard::getCurrentReport()[1],
+                    Keyboard::getCurrentReport()[2], Keyboard::getCurrentReport()[3], 
+                    Keyboard::getCurrentReport()[4], Keyboard::getCurrentReport()[5], 
+                    Keyboard::getCurrentReport()[6], Keyboard::getCurrentReport()[7]);        
+
+        }
     }
-   }
-  #if BLE_PERIPHERAL ==1   | BLE_CENTRAL ==1                            /**************************************************/
-    if(KeyScanner::layerChanged)                                               //layer comms
+#if BLE_PERIPHERAL ==1   | BLE_CENTRAL ==1                            
+    /**************************************************/
+    //layer comms 
+    if(Keyboard::layerChanged())                                              
     {   
-        sendlayer(KeyScanner::localLayer);
-        LOG_LV1("MXSCAN","Layer %i  %i" ,millis(),KeyScanner::localLayer);
-        KeyScanner::layerChanged = false;                                      // mark layer as "not changed" since last update
+        sendlayer(Keyboard::getLocalLayer());
+        LOG_LV1("MXSCAN","Layer %i  %i", millis(), Keyboard::getLocalLayer());
+        //Keyboard::layerChanged = false;                                      
     } 
-  #endif                                                                /**************************************************/
+#endif                                                                /**************************************************/
 }
 /**************************************************************************************************************************/
 // put your main code here, to run repeatedly:
 /**************************************************************************************************************************/
 void loop() {
-  // put your main code here, to run repeatedly:
+    // put your main code here, to run repeatedly:
 
-  unsigned long timesincelastkeypress = millis() - KeyScanner::getLastPressed();
+    unsigned long timesincelastkeypress = millis() - Keyboard::getLastPressed();
 
-  #if SLEEP_ACTIVE == 1
+#if SLEEP_ACTIVE == 1
     gotoSleep(timesincelastkeypress,Bluefruit.connected());
-  #endif
+#endif
 
-  #if BLE_CENTRAL == 1  
-    if ((timesincelastkeypress<10)&&(!Bluefruit.Central.connected()&&(!Bluefruit.Scanner.isRunning())))
+#if BLE_CENTRAL == 1  
+    if ((timesincelastkeypress < 10)
+            && !Bluefruit.Central.connected()
+            && !Bluefruit.Scanner.isRunning())
     {
-      Bluefruit.Scanner.start(0);                                                     // 0 = Don't stop scanning after 0 seconds  ();
+        //0 = Don't stop scanning after 0 seconds
+        Bluefruit.Scanner.start(0);                                                     
     }
-  #endif
+#endif
 
-  #if BACKLIGHT_PWM_ON == 1
+#if BACKLIGHT_PWM_ON == 1
     updatePWM(timesincelastkeypress);
-  #endif
+#endif
 
-  if (monitoring_state == STATE_BOOT_MODE)
-  {
-      KeyScanner::getReport();                                            // get state data - Data is in KeyScanner::currentReport
-      if (!(KeyScanner::reportEmpty))
-      {
-        for (int i = 0; i < BOOT_MODE_COMMANDS_COUNT; ++i)          // loop through BOOT_MODE_COMMANDS and compare with the first key being pressed - assuming only 1 key will be pressed when in boot mode.
+    if (monitoring_state == STATE_BOOT_MODE)
+    {
+        //update state data - Data is in Keyboard::currentReport
+        Keyboard::updateReport();                                            
+        if (!(Keyboard::reportEmpty()))
         {
-          if(KeyScanner::currentReport[1] == boot_mode_commands[i][0])
-          {
-            monitoring_state = boot_mode_commands[i][1];
-          }
+            //loop through BOOT_MODE_COMMANDS and compare with the first key being pressed
+            //assuming only 1 key will be pressed when in boot mode.
+            for (int i = 0; i < BOOT_MODE_COMMANDS_COUNT; ++i)          
+            {
+                if(Keyboard::getCurrentReport().data()[1] == boot_mode_commands[i][0])
+                {
+                    monitoring_state = boot_mode_commands[i][1];
+                }
+            }
         }
-      }
-  } 
-  delay(HIDREPORTINGINTERVAL*4);
+    } 
+    delay(HIDREPORTINGINTERVAL*4);
 };
 /**************************************************************************************************************************/
 // put your key scanning code here, to run repeatedly:

@@ -6,13 +6,13 @@
 #define KEYPRESS_H
 
 using Modifier = std::vector<std::pair<bool, uint32_t>>;
-using Activations = std::array<Modifier, 3>;
+using Methods = std::array<Modifier, 3>;
 
 class Keypress 
 {
     public: 
         Keypress();
-        Keypress(Activations acts); 
+        Keypress(Methods ms); 
 
         void clear(unsigned long currentMillis);
         void press(unsigned long currentMillis);
@@ -34,9 +34,11 @@ class Keypress
 
         void updateLastOn(unsigned long currentMillis, bool press);
 
-        Activations activations;
+        Methods activations;
+
         bool wasPress;
         unsigned long lastChange;
         std::array<std::size_t, 3> candidates;
 };
+
 #endif 

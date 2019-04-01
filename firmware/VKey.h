@@ -21,15 +21,16 @@ class VKey
 
         VKey() : activations {{ }} {}
 
-        VKey(uint32_t keycode) : activations {{ {keycode, {false, DEBOUNCE_TIME}} }} { }
+        VKey(uint32_t keycode) 
+            : activations {{ {keycode, std::make_pair(false, DEBOUNCE_TIME)} }} { }
 
-        Key(Keypress k1, uint32_t a1) 
+        VKey(Keypress k1, uint32_t a1) 
             : activations {{ {a1, k1} }} { }
 
-        Key(Keypress k1, uint32_t a1, Keypress k2, uint32_t a2) 
+        VKey(Keypress k1, uint32_t a1, Keypress k2, uint32_t a2) 
             : activations {{ {a1, k1}, {a2, k2} }} { }
 
-        Key(Keypress k1, uint32_t a1, Keypress k2, uint32_t a2, Keypress k3, uint32_t a3)
+        VKey(Keypress k1, uint32_t a1, Keypress k2, uint32_t a2, Keypress k3, uint32_t a3)
             : vkeys {{ {a1, k1}, {a2, k2}, {a3, k3} }} { }
 
         void press(unsigned long delta)
@@ -60,6 +61,6 @@ class VKey
 
             return {};
         }
-}
+};
 
 #endif
