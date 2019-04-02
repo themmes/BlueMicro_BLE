@@ -19,7 +19,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "hid_keycodes.h"
 #include "keyboard_config.h"
 #include "advanced_keycodes.h"
-#include "Key.h"
+#include "VKey.h"
 #include <array>
 #include <vector>
 #include <tuple>
@@ -41,9 +41,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 //using layer_t = std::array<std::array<uint32_t, MATRIX_COLS>, MATRIX_ROWS>;
 //using main_layer_t = std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS>;
 
-using layer_t = std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS>;
+using layer_t = std::array<std::array<VKey, MATRIX_COLS>, MATRIX_ROWS>;
 using matrix_t = std::array<layer_t, NUM_LAYERS>;
 
 extern matrix_t matrix;
+
+void setupKeymap();
 
 #endif KEYMAP_H
