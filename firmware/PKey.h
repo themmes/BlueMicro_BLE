@@ -1,5 +1,5 @@
-
 #include "VKey.h"
+#include "keymap.h"
 #include <array>
 #include <utility>
 
@@ -22,11 +22,11 @@ class PKey
 
             if (press)
             {
-                vkeys[layer].press(delta);
+                vkeys[layer].press(delta, wasPress);
             }
             else 
             {
-                vkeys[layer].clear(delta);
+                vkeys[layer].clear(delta, wasPress);
             }
 
             updateLastChanged(currentMillis, press);
@@ -59,13 +59,13 @@ class PKey
 
     public:
         //default is no virtual keys whatsoever 
-        Key() : vkeys {{ }} { }
+        PKey() : vkeys {{ }} { }
 
         //rvalue constructor
-        Key(VirtualKeys&& keys) : vkeys {std::move(keys)} { }
+        PKey(VirtualKeys&& keys) : vkeys {std::move(keys)} { }
 
         //lvalue constructor
-        Key(const VirtualKey& keys) : vkeys {keys} { }
+        PKey(const VirtualKeys& keys) : vkeys {keys} { }
 
         void press(unsigned long currentMillis, uint8_t layer) 
         { 
@@ -84,6 +84,6 @@ class PKey
         {
             return vkeys[layer].getKeycode();
         }
-}
+};
 
 #endif

@@ -5,14 +5,13 @@
 #ifndef KEYPRESS_H
 #define KEYPRESS_H
 
-using Modifier = std::vector<std::pair<bool, uint32_t>>;
-using Methods = std::array<Modifier, 3>;
+using Method = std::vector<std::pair<bool, uint32_t>>;
 
 class Keypress 
 {
     public: 
         Keypress();
-        Keypress(Methods ms); 
+        Keypress(Method ms); 
 
         void clear(unsigned long delta, bool wasPress);
         void press(unsigned long delta, bool wasPress);
@@ -28,13 +27,10 @@ class Keypress
                 bool even);
 
         void updateIndex();
-        //void updateLastOn(unsigned long currentMillis, bool press);
 
         Method method;
 
-        Methods activations;
         bool wasPress;
-        //unsigned long lastChange;
 
         std::size_t index;
 };

@@ -1,11 +1,13 @@
-#include <cstdint>
-#include <utility>
-#include <array>
 #include <vector>
 
 #include "keymap.h"
 #include "PKey.h"
 #include "VKey.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <utility>
+#include <array>
 
 #ifndef KEYBOARD
 #define KEYBOARD
@@ -21,8 +23,8 @@ namespace Keyboard
     //bool getReport(); return value isn't used, calls layer, mod update and updates buffer
     void updateReport();
 
-    bool reportEmpty();
-    bool layerChanged();
+    bool getReportEmpty();
+    bool getLayerChanged();
 
     //also resets the layer changed flag
     uint8_t getLocalLayer();

@@ -114,7 +114,7 @@ void scanMatrix() {
 void sendKeyPresses() {
     //update state data - Data is in Keyboard::currentReport  
     Keyboard::updateReport(); 
-    if (!(Keyboard::reportEmpty()))  //any key presses anywhere?
+    if (!(Keyboard::getReportEmpty()))  //any key presses anywhere?
     {                                                                              
         //send the current report
         //and first retreive the underlying c-style array from the std array
@@ -147,11 +147,10 @@ void sendKeyPresses() {
 #if BLE_PERIPHERAL ==1   | BLE_CENTRAL ==1                            
     /**************************************************/
     //layer comms 
-    if(Keyboard::layerChanged())                                              
+    if(Keyboard::getLayerChanged())                                              
     {   
         sendlayer(Keyboard::getLocalLayer());
         LOG_LV1("MXSCAN","Layer %i  %i", millis(), Keyboard::getLocalLayer());
-        //Keyboard::layerChanged = false;                                      
     } 
 #endif                                                                /**************************************************/
 }
@@ -185,7 +184,7 @@ void loop() {
     {
         //update state data - Data is in Keyboard::currentReport
         Keyboard::updateReport();                                            
-        if (!(Keyboard::reportEmpty()))
+        if (!(Keyboard::getReportEmpty()))
         {
             //loop through BOOT_MODE_COMMANDS and compare with the first key being pressed
             //assuming only 1 key will be pressed when in boot mode.

@@ -22,7 +22,7 @@ class VKey
         VKey() : activations {{ }} {}
 
         VKey(uint32_t keycode) 
-            : activations {{ {keycode, std::make_pair(false, DEBOUNCE_TIME)} }} { }
+            : activations {{ {keycode, {{ {false, DEBOUNCE_TIME} }} } }} { }
 
         VKey(Keypress k1, uint32_t a1) 
             : activations {{ {a1, k1} }} { }
@@ -31,21 +31,21 @@ class VKey
             : activations {{ {a1, k1}, {a2, k2} }} { }
 
         VKey(Keypress k1, uint32_t a1, Keypress k2, uint32_t a2, Keypress k3, uint32_t a3)
-            : vkeys {{ {a1, k1}, {a2, k2}, {a3, k3} }} { }
+            : activations {{ {a1, k1}, {a2, k2}, {a3, k3} }} { }
 
-        void press(unsigned long delta)
+        void press(unsigned long delta, bool wasPress)
         {
             for (auto& p : activations)
             {
-                p.second.press(delta);
+                p.second.press(delta, wasPress);
             }
         }
 
-        void clear(unsigned long delta)
+        void clear(unsigned long delta, bool wasPress)
         {
             for (auto& p : activations)
             {
-                p.second.clear(delta);
+                p.second.clear(delta, wasPress);
             }
         }
 

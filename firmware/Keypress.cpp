@@ -1,5 +1,6 @@
 #include "Keypress.h"
 
+//avoid a compile time error
 namespace std {
     void __throw_bad_alloc() {
     }
@@ -7,20 +8,9 @@ namespace std {
     }
 }
 
-Keypress::Keypress()
-{
-    method{};
-    wasPress = false;
-}
+Keypress::Keypress() : method{ }, wasPress{false} { }
 
-Keypress::Keypress(Methods ms) 
-{
-    activations = ms;
-    candidates = {0};
-
-    lastChange = 0;
-    wasPress = false;
-} 
+Keypress::Keypress(Method m) : method{m}, index{0}, wasPress{false} { }
 
 void Keypress::clear(unsigned long delta, bool wasPress) 
 {
@@ -37,8 +27,11 @@ bool Keypress::isActive()
 {
     if (method.size() != 0 && index == method.size())
     {
-        //reset the index and return
-        candidates[i] = 0;
+        //copy the index,
+        //reset it and return the copy
+        auto i = index;
+        index = 0;
+
         return i;
     }
 
@@ -89,7 +82,7 @@ void Keypress::checkActivations(unsigned long delta, bool wasPress, bool press)
         if (extrema(delta, current, wasPress, press, (index % 2 == 0)))
         {
             //iterate the index
-            updateIndex(i);
+            updateIndex();
         }
     }
 }

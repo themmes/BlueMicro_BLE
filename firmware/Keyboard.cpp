@@ -1,81 +1,36 @@
 #include "Keyboard.h"
 
-#ifndef KEYBOARD
-#define KEYBOARD
-
 namespace Keyboard 
 {
-    void setupKeyboard()
+    //the three layers
+    uint8_t remoteLayer = 0;
+    uint8_t localLayer = 0;
+    uint8_t currentLayer = 0;
+
+    //two mods
+    uint8_t currentMod = 0;
+    uint8_t remoteMod = 0;
+
+    std::array<uint8_t, 8> currentReport;
+    std::array<uint8_t, 8> remoteReport;
+
+    bool emptyOneshot = false;
+    bool layerChanged = false;
+    bool reportEmpty = true;
+
+    unsigned long lastPressed;
+
+    std::vector<Keycode> buffer;
+
+    std::vector<std::pair<uint8_t, uint8_t>> momentaryBuffer;
+    std::vector<std::pair<uint8_t, uint8_t>> toggleBuffer;
+    std::vector<std::pair<uint8_t, uint8_t>> oneshotBuffer;
+
+    std::array<std::array<PKey, MATRIX_COLS>, MATRIX_ROWS> keyboard {{ }};
+
+    void updateModifier(uint8_t modifier)
     {
-        //run the user defined keymap setup
-        //for single key definitions
-        setupKeymap();
-
-        std::array<VKey, NUM_LAYERS> vkeys;
-
-        //initialize internal matrix from keymap matrix 
-        for (int i = 0; i < MATRIX_ROWS; ++i)
-        {
-            for (int j = 0; j < MATRIX_COLS; ++j)
-            {
-                for (std::size_t l = 0; l < NUM_LAYERS; ++l)
-                {
-                    vkeys[l] = matrix[l][i][j]; 
-                }
-
-                keyboard[i][j] = vkeys;
-            }
-        }
-    }
-
-
-    void scanMatrix(int currentState, unsigned long currentMillis, int row, int col)
-    {
-#if DIODE_DIRECTION == COL2ROW
-        if (currentState == 0) 
-#else
-        if (currentState == 1)
-#endif 
-        {
-            //key is pressed
-            keyboard[currentLayer][row][col].press(currentMillis, currentLayer);
-
-            //TODO: is there a problem caused by possible changes 
-            //upon clear and keyboard going into sleep mode?
-            lastPressed = currentMillis;
-        }
-        else 
-        {
-            //key is not pressed
-            keyboard[currentLayer][row][col].clear(currentMillis, currentLayer);
-        }
-    }
-
-    //TODO: more efficient return?
-    std::array<uint8_t, 8> getCurrentReport()
-    {
-        return currentReport;
-    }
-
-    void resetReport()
-    {
-        currentReport = {0}
-    }
-
-    void copyRemoteReport()
-    {
-#if BLE_PERIPHERAL != 1 //peripheral must be handled differently than central - otherwise,
-                        //the reports will just keep bouncing from one board to the other
-
-        currentMod = remoteMod;
-
-        for (auto i : remoteReport)
-        {
-            //construct a pair which corresponds to 
-            //an HID Keycode and no extra modifiers
-            momentaryBuffer.push_back({i, 0});
-        }
-#endif
+        currentMod |= 1 << (modifier - KC_LCTRL);
     }
 
     void updateLayer(uint8_t layer)
@@ -89,35 +44,55 @@ namespace Keyboard
 
         //the current layer is the smaller of the two local and remote layers
         currentLayer = (layer < remoteLayer) ? remoteLayer : layer;
-        
+
         //the layer is changed if the previous layer isn't the current, updated one
         layerChanged = prevLayer != currentLayer;
     }
 
-    void updateModifier(uint8_t modifier)
+    //add a keycode into the report at a given index and merge extra
+    //modifiers into the current modifiers
+    void intoReport(uint8_t HID_Keycode, uint8_t extraModifiers, int index)
     {
-        currentMod |= 1 << (modifier - KC_LCTRL);
+        if (HID_Keycode != 0)
+        {
+            if (HID_Keycode >= LAYER_0 && HID_Keycode <= LAYER_F)
+            {
+                updateLayer(HID_Keycode);
+            }
+            //if the HID keycode corresponds to a modifier
+            else if (HID_Keycode >= KC_LCTRL && HID_Keycode <= KC_RGUI)
+            {
+                updateModifier(HID_Keycode);
+            }
+            else 
+            {
+                //oneshot should be emptied into the report
+                //upon a non modifier or layer keycode
+                emptyOneshot = true;
+                currentReport[index] = HID_Keycode;
+            }
+        }
+
+        //no modifier is 0, which is identity for logical
+        //conjunction, so no change is made if there 
+        //are no extra modifiers
+        currentMod |= extraModifiers;
     }
 
-    bool reportEmpty()
+    void copyRemoteReport()
     {
-        return reportEmpty;
-    }
+#if BLE_PERIPHERAL != 1 //peripheral must be handled differently than central - otherwise,
+        //the reports will just keep bouncing from one board to the other
 
-    bool layerChanged()
-    {
-        return layerChanged;
-    }
+        currentMod = remoteMod;
 
-    uint8_t getLocalLayer()
-    {
-        layerChanged = false;
-        return localLayer;
-    }
-
-    unsigned long getLastPressed()
-    {
-        return lastPressed;
+        for (auto i : remoteReport)
+        {
+            //construct a pair which corresponds to 
+            //an HID Keycode and no extra modifiers
+            momentaryBuffer.push_back({i, 0});
+        }
+#endif
     }
 
     void updateBuffers(uint8_t layer)
@@ -130,7 +105,7 @@ namespace Keyboard
                 auto keycode = key.getKeycode(layer);
 
                 //if a non-null keycode active
-                auto reportPair = std::make_pair(keycode.getHIDKeycode, keycode.getModifiers);
+                auto reportPair = std::make_pair(keycode.getHIDKeycode(), keycode.getModifiers());
                 auto duration = keycode.getDuration();
 
                 if (reportPair.first != 0 || reportPair.second != 0)
@@ -166,34 +141,83 @@ namespace Keyboard
         }
     }
 
-    //add a keycode into the report at a given index and merge extra
-    //modifiers into the current modifiers
-    void intoReport(uint8_t HID_Keycode, uint8_t extraModifiers, int index)
+    void resetReport()
     {
-        if (HID_Keycode != 0)
+        currentReport = {0};
+    }
+
+    void setupKeyboard()
+    {
+        //run the user defined keymap setup
+        //for single key definitions
+        setupKeymap();
+
+        std::array<VKey, NUM_LAYERS> vkeys;
+
+        //initialize internal matrix from keymap matrix 
+        for (int i = 0; i < MATRIX_ROWS; ++i)
         {
-            if (HID_Keycode >= LAYER_0 && HID_Keycode <= LAYER_F)
+            for (int j = 0; j < MATRIX_COLS; ++j)
             {
-                updateLayer(HID_Keycode);
+                for (std::size_t l = 0; l < NUM_LAYERS; ++l)
+                {
+                    vkeys[l] = matrix[l][i][j]; 
+                }
+
+                keyboard[i][j] = vkeys;
             }
-            //if the HID keycode corresponds to a modifier
-            else if (HID_Keycode >= KC_LCTRL && HID_Keycode <= KC_RGUI)
+        }
+    }
+
+
+    void scanMatrix(int currentState, unsigned long currentMillis, int row, int col)
+    {
+#if DIODE_DIRECTION == COL2ROW
+        if (currentState == 0) 
+#else
+            if (currentState == 1)
+#endif 
             {
-                updateModifier(HID_Keycode);
+                //key is pressed
+                keyboard[row][col].press(currentMillis, currentLayer);
+
+                //TODO: is there a problem caused by possible changes 
+                //upon clear and keyboard going into sleep mode?
+                lastPressed = currentMillis;
             }
             else 
             {
-                //oneshot should be emptied into the report
-                //upon a non modifier or layer keycode
-                emptyOneshot = true;
-                currentReport[i] = HID_Keycode;
+                //key is not pressed
+                keyboard[row][col].clear(currentMillis, currentLayer);
             }
-        }
+    }
 
-        //no modifier is 0, which is identity for logical
-        //conjunction, so no change is made if there 
-        //are no extra modifiers
-        currentMod |= extraModifiers;
+    //TODO: more efficient return?
+    std::array<uint8_t, 8> getCurrentReport()
+    {
+        return currentReport;
+    }
+
+
+    bool getReportEmpty()
+    {
+        return reportEmpty;
+    }
+
+    bool getLayerChanged()
+    {
+        return layerChanged;
+    }
+
+    uint8_t getLocalLayer()
+    {
+        layerChanged = false;
+        return localLayer;
+    }
+
+    unsigned long getLastPressed()
+    {
+        return lastPressed;
     }
 
     void updateReport()
@@ -206,7 +230,7 @@ namespace Keyboard
         copyRemoteReport();
 
         //read the currently active keys into their respective buffers
-        updateBuffers();
+        updateBuffers(currentLayer);
 
         //the toggle iterator starts at the reverse begin
         auto toggle_it = toggleBuffer.rbegin();
@@ -265,30 +289,16 @@ namespace Keyboard
         currentReport[7] = currentLayer;
     }
 
-    //the three layers
-    uint8_t reportLayer = 0;
-    uint8_t localLayer = 0;
-    uint8_t currentLayer = 0;
+    void updateRemoteLayer(uint8_t layer)
+    {
+        remoteReport[7] = layer;
+    }
 
-    //two mods
-    uint8_t currentMod = 0;
-    uint8_t reportMod = 0;
-
-    std::array<uint8_t, 8> currentReport;
-    std::array<uint8_t, 8> remoteReport;
-
-    bool emptyOneshot = false;
-    bool reportEmpty = true;
-
-    unsigned long lastPressed;
-
-    std::vector<Keycode> buffer;
-
-    std::vector<std::pair<uint8_t, uint8_t>> momentaryBuffer;
-    std::vector<std::pair<uint8_t, uint8_t>> toggleBuffer;
-    std::vector<std::pair<uint8_t, uint8_t>> oneshotBuffer;
-
-    std::array<std::array<PKey, MATRIX_COLS>, MATRIX_ROWS> keyboard {{ }};
+    void updateRemoteReport(std::array<uint8_t, 7> report)
+    {
+        for (auto i = 0; i < report.size(); ++i)
+        {
+            remoteReport[i] = report[i];
+        }
+    }
 }
-
-#endif
