@@ -98,9 +98,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define BOOT_MODE_DELAY  500
 #endif
 
+/*
 #ifndef DEBOUNCETIME 
 #define DEBOUNCETIME 10
 #endif
+*/
 
 #ifndef HIDREPORTINGINTERVAL
 #define HIDREPORTINGINTERVAL 1
@@ -116,7 +118,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #define SLEEPING_DELAY 30000              // when it's not connected, 30 seconds is good.
 #define SLEEPING_DELAY_CONNECTED 600000   // 2 minutes is way too fast and really ennoying. making it 10 minutes
-#define SLEEP_ACTIVE 1                    // 1 = it will go to sleep. 0 = sleep will not be activated.
+#define SLEEP_ACTIVE 0                    // 1 = it will go to sleep. 0 = sleep will not be activated.
 
 #define DEFAULT_PWM_VALUE 1500            // PWM intensity
 #define PWM_TOUCH_INTERVAL 1000           // detection time since last keypress.

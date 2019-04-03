@@ -3,16 +3,18 @@
 namespace Keyboard 
 {
     //the three layers
-    uint8_t remoteLayer = 0;
-    uint8_t localLayer = 0;
+    //uint8_t remoteLayer = 0;
+    //uint8_t localLayer = 0;
     uint8_t currentLayer = 0;
 
-    //two mods
+    //the current modifier, with each
+    //bit representing one modifier, e.g. LSHIFT
     uint8_t currentMod = 0;
-    uint8_t remoteMod = 0;
 
-    std::array<uint8_t, 8> currentReport;
-    std::array<uint8_t, 8> remoteReport;
+    std::array<uint8_t, 8> currentReport = {0};
+    
+    //remote report without the layer
+    std::array<uint8_t, 7> remoteReport = {0};
 
     bool emptyOneshot = false;
     bool layerChanged = false;
@@ -37,16 +39,21 @@ namespace Keyboard
     {
         //save the layer pressed on this physical part of the keyboard
         //to send to the other side
-        localLayer = layer;
+        //localLayer = layer;
 
         //save the current layer for comparison later
-        uint8_t prevLayer = currentLayer;
+        //uint8_t prevLayer = currentLayer;
 
+        if (layer > currentLayer)
+        {
+            currentLayer = layer;
+            layerChanged = true;
+        }
         //the current layer is the smaller of the two local and remote layers
-        currentLayer = (layer < remoteLayer) ? remoteLayer : layer;
+        //currentLayer = (layer < remoteLayer) ? remoteLayer : layer;
 
         //the layer is changed if the previous layer isn't the current, updated one
-        layerChanged = prevLayer != currentLayer;
+        //layerChanged = prevLayer != currentLayer;
     }
 
     //add a keycode into the report at a given index and merge extra
@@ -81,16 +88,21 @@ namespace Keyboard
 
     void copyRemoteReport()
     {
-#if BLE_PERIPHERAL != 1 //peripheral must be handled differently than central - otherwise,
+        //peripheral must be handled differently than central - otherwise,
         //the reports will just keep bouncing from one board to the other
+#if BLE_PERIPHERAL != 1 
 
-        currentMod = remoteMod;
+        currentMod |= remoteReport[0];
 
         for (auto i : remoteReport)
         {
-            //construct a pair which corresponds to 
-            //an HID Keycode and no extra modifiers
-            momentaryBuffer.push_back({i, 0});
+            //no need to add zero keys
+            if (i != 0)
+            {
+                //construct a pair which corresponds to 
+                //an HID Keycode and no extra modifiers
+                momentaryBuffer.push_back({i, 0});
+            }
         }
 #endif
     }
@@ -175,21 +187,21 @@ namespace Keyboard
 #if DIODE_DIRECTION == COL2ROW
         if (currentState == 0) 
 #else
-            if (currentState == 1)
+        if (currentState == 1)
 #endif 
-            {
-                //key is pressed
-                keyboard[row][col].press(currentMillis, currentLayer);
+        {
+            //key is pressed
+            keyboard[row][col].press(currentMillis, currentLayer);
 
-                //TODO: is there a problem caused by possible changes 
-                //upon clear and keyboard going into sleep mode?
-                lastPressed = currentMillis;
-            }
-            else 
-            {
-                //key is not pressed
-                keyboard[row][col].clear(currentMillis, currentLayer);
-            }
+            //TODO: is there a problem caused by possible changes 
+            //upon clear and keyboard going into sleep mode?
+            lastPressed = currentMillis;
+        }
+        else 
+        {
+            //key is not pressed
+            keyboard[row][col].clear(currentMillis, currentLayer);
+        }
     }
 
     //TODO: more efficient return?
@@ -201,18 +213,20 @@ namespace Keyboard
 
     bool getReportEmpty()
     {
-        return reportEmpty;
+        return reportEmpty();
+        //return true;
     }
 
     bool getLayerChanged()
     {
         return layerChanged;
+        //return false;
     }
 
     uint8_t getLocalLayer()
     {
         layerChanged = false;
-        return localLayer;
+        return currentLayer;
     }
 
     unsigned long getLastPressed()
@@ -235,12 +249,13 @@ namespace Keyboard
         //the toggle iterator starts at the reverse begin
         auto toggle_it = toggleBuffer.rbegin();
 
-        for (int i = 1; i < currentReport.size() - 1; ++i)
+        for (int i = 1; i < 7; ++i)
         {
+            
             if (momentaryBuffer.size() != 0)
             {
                 //get the last element of the momentary buffer
-                auto rp = momentaryBuffer.back();
+                std::pair<uint8_t, uint8_t> rp = momentaryBuffer.back();
 
                 //add it into the currentReport
                 intoReport(rp.first, rp.second, i);
@@ -289,14 +304,19 @@ namespace Keyboard
         currentReport[7] = currentLayer;
     }
 
-    void updateRemoteLayer(uint8_t layer)
+    void updateRemoteLayer(uint8_t remotelayer)
     {
-        remoteReport[7] = layer;
+        //remoteReport[7] = layer;
+        if (remoteLayer > currentLayer)
+        {
+            currentLayer = remoteLayer;
+        }
+        //remoteLayer = layer;
     }
 
     void updateRemoteReport(std::array<uint8_t, 7> report)
     {
-        for (auto i = 0; i < report.size(); ++i)
+        for (auto i = 0; i < remoteReport.size(); ++i)
         {
             remoteReport[i] = report[i];
         }

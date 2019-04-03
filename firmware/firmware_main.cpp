@@ -44,14 +44,14 @@ void setup() {
   Scheduler.startLoop(monitoringloop);                                        // Starting second loop task for monitoring tasks
   Scheduler.startLoop(keyscanningloop);                                       // Starting third loop task for key scanning
 
-  setupBluetooth();
-
   #if BACKLIGHT_PWM_ON == 1 //setup PWM module
     setupPWM();
   #endif
   // Set up keyboard matrix and start advertising
   setupKeymap();
   setupMatrix();
+
+  setupBluetooth();
   startAdv(); 
 };
 /**************************************************************************************************************************/
@@ -114,7 +114,8 @@ void scanMatrix() {
 void sendKeyPresses() {
     //update state data - Data is in Keyboard::currentReport  
     Keyboard::updateReport(); 
-    if (!(Keyboard::getReportEmpty()))  //any key presses anywhere?
+    
+    if (!Keyboard::getReportEmpty())  //any key presses anywhere?
     {                                                                              
         //send the current report
         //and first retreive the underlying c-style array from the std array
@@ -130,7 +131,7 @@ void sendKeyPresses() {
     //NO key presses anywhere
     else                                                                  
     {
-        if ((!isReportedReleased)){
+        if (!isReportedReleased){
             sendRelease(Keyboard::getCurrentReport().data());  
             
             // Update flag so that we don't re-issue the message if we don't need to.
@@ -144,9 +145,11 @@ void sendKeyPresses() {
 
         }
     }
+    
 #if BLE_PERIPHERAL ==1   | BLE_CENTRAL ==1                            
     /**************************************************/
     //layer comms 
+    
     if(Keyboard::getLayerChanged())                                              
     {   
         sendlayer(Keyboard::getLocalLayer());
