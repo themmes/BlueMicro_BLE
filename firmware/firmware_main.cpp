@@ -48,7 +48,7 @@ void setup() {
     setupPWM();
   #endif
   // Set up keyboard matrix and start advertising
-  setupKeymap();
+  Keyboard::setupKeyboard();
   setupMatrix();
 
   setupBluetooth();
@@ -114,34 +114,35 @@ void scanMatrix() {
 void sendKeyPresses() {
     //update state data - Data is in Keyboard::currentReport  
     Keyboard::updateReport(); 
+    auto report = Keyboard::getCurrentReport(); 
     
     if (!Keyboard::getReportEmpty())  //any key presses anywhere?
     {                                                                              
         //send the current report
         //and first retreive the underlying c-style array from the std array
-        sendKeys(Keyboard::getCurrentReport().data());
+        sendKeys(report.data());
         isReportedReleased = false;
 
         LOG_LV1("MXSCAN","SEND: %i %i %i %i %i %i %i %i %i %i", millis(),
-                Keyboard::getCurrentReport()[0], Keyboard::getCurrentReport()[1],
-                Keyboard::getCurrentReport()[2], Keyboard::getCurrentReport()[3], 
-                Keyboard::getCurrentReport()[4], Keyboard::getCurrentReport()[5], 
-                Keyboard::getCurrentReport()[6], Keyboard::getCurrentReport()[7]);        
+                report[0], report[1],
+                report[2], report[3], 
+                report[4], report[5], 
+                report[6], report[7]);        
     }
     //NO key presses anywhere
     else                                                                  
     {
         if (!isReportedReleased){
-            sendRelease(Keyboard::getCurrentReport().data());  
+            sendRelease(report.data());  
             
             // Update flag so that we don't re-issue the message if we don't need to.
             isReportedReleased = true;                                         
 
             LOG_LV1("MXSCAN","RELEASED: %i %i %i %i %i %i %i %i %i %i", millis(),
-                    Keyboard::getCurrentReport()[0], Keyboard::getCurrentReport()[1],
-                    Keyboard::getCurrentReport()[2], Keyboard::getCurrentReport()[3], 
-                    Keyboard::getCurrentReport()[4], Keyboard::getCurrentReport()[5], 
-                    Keyboard::getCurrentReport()[6], Keyboard::getCurrentReport()[7]);        
+                    report[0], report[1],
+                    report[2], report[3], 
+                    report[4], report[5], 
+                    report[6], report[7]);        
 
         }
     }

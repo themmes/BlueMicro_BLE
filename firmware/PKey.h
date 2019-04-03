@@ -37,7 +37,9 @@ class PKey
             if (wasPress != press)
             {
                 lastChanged = currentMillis;
-                wasPress = !wasPress;
+                
+                //flip wasPress
+                wasPress = press;
             }
         }
         //sets the keycode and duration for a given index and code

@@ -60,29 +60,26 @@ namespace Keyboard
     //modifiers into the current modifiers
     void intoReport(uint8_t HID_Keycode, uint8_t extraModifiers, int index)
     {
-        if (HID_Keycode != 0)
+        if (HID_Keycode >= LAYER_0 && HID_Keycode <= LAYER_F)
         {
-            if (HID_Keycode >= LAYER_0 && HID_Keycode <= LAYER_F)
-            {
-                updateLayer(HID_Keycode);
-            }
-            //if the HID keycode corresponds to a modifier
-            else if (HID_Keycode >= KC_LCTRL && HID_Keycode <= KC_RGUI)
-            {
-                updateModifier(HID_Keycode);
-            }
-            else 
-            {
-                //oneshot should be emptied into the report
-                //upon a non modifier or layer keycode
-                emptyOneshot = true;
-                currentReport[index] = HID_Keycode;
-            }
+            updateLayer(HID_Keycode);
+        }
+        //if the HID keycode corresponds to a modifier
+        else if (HID_Keycode >= KC_LCTRL && HID_Keycode <= KC_RGUI)
+        {
+            updateModifier(HID_Keycode);
+        }
+        else 
+        {
+            //oneshot should be emptied into the report
+            //upon a non modifier or layer keycode
+            emptyOneshot = true;
+            currentReport[index] = HID_Keycode;
         }
 
-        //no modifier is 0, which is identity for logical
-        //conjunction, so no change is made if there 
-        //are no extra modifiers
+        //add extra mods into the current ones, no modifier is 0, 
+        //which is identity for logical conjunction, 
+        //therefore no change is made if there are no extra modifiers
         currentMod |= extraModifiers;
     }
 
@@ -155,6 +152,7 @@ namespace Keyboard
 
     void resetReport()
     {
+        currentMod = 0;
         currentReport = {0};
     }
 
@@ -191,7 +189,8 @@ namespace Keyboard
 #endif 
         {
             //key is pressed
-            keyboard[row][col].press(currentMillis, currentLayer);
+            //keyboard[row][col].press(currentMillis, currentLayer);
+            keyboard[row][col].press(currentMillis, 0);
 
             //TODO: is there a problem caused by possible changes 
             //upon clear and keyboard going into sleep mode?
@@ -200,7 +199,8 @@ namespace Keyboard
         else 
         {
             //key is not pressed
-            keyboard[row][col].clear(currentMillis, currentLayer);
+            //keyboard[row][col].clear(currentMillis, currentLayer);
+            keyboard[row][col].clear(currentMillis, 0);
         }
     }
 
@@ -213,14 +213,12 @@ namespace Keyboard
 
     bool getReportEmpty()
     {
-        return reportEmpty();
-        //return true;
+        return reportEmpty;
     }
 
     bool getLayerChanged()
     {
         return layerChanged;
-        //return false;
     }
 
     uint8_t getLocalLayer()
@@ -238,6 +236,8 @@ namespace Keyboard
     {
         emptyOneshot = false;
         reportEmpty = false;
+        
+        //reset the report along with the mods
         resetReport();
 
         //read the remote report into the momentary buffer
@@ -304,7 +304,7 @@ namespace Keyboard
         currentReport[7] = currentLayer;
     }
 
-    void updateRemoteLayer(uint8_t remotelayer)
+    void updateRemoteLayer(uint8_t remoteLayer)
     {
         //remoteReport[7] = layer;
         if (remoteLayer > currentLayer)

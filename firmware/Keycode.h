@@ -15,8 +15,8 @@ class Keycode
         Keycode(uint32_t keycode)
         {
             hid_keycode = static_cast<uint8_t>(keycode & 0x000000FF);
-            duration = static_cast<uint8_t>((keycode & 0x0000FF00) >> 8);
-            modifiers = static_cast<uint8_t>((keycode & 0x00FF0000) >> 16);
+            modifiers = static_cast<uint8_t>((keycode & 0x0000FF00) >> 8);
+            duration = static_cast<uint8_t>((keycode & 0x00FF0000) >> 16);
         }
 
         uint8_t getModifiers() 

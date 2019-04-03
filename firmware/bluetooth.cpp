@@ -389,8 +389,7 @@ void sendKeys(uint8_t currentReport[8])
 
     //layer
     layer = currentReport[7];
-
-    blehid.keyboardReport(mods, keycode); 
+blehid.keyboardReport(mods, keycode); 
 #endif
 #if BLE_PERIPHERAL == 1  
     KBLinkChar_Buffer.notify(currentReport, 7);

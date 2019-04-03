@@ -19,7 +19,7 @@ void Keypress::clear(unsigned long delta, bool wasPress)
 
 void Keypress::press(unsigned long delta, bool wasPress) 
 {
-    checkActivations(delta, delta, true);
+    checkActivations(delta, wasPress, true);
 }
 
 //returns a failure value (4) or the index of the first active activation
