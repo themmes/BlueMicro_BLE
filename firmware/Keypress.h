@@ -12,6 +12,7 @@ class Keypress
     public: 
         Keypress();
         Keypress(Method ms); 
+        Keypress(Method ms, uint8_t actIndex);
 
         void clear(unsigned long delta, bool wasPress);
         void press(unsigned long delta, bool wasPress);
@@ -27,12 +28,15 @@ class Keypress
                 bool even);
 
         void updateIndex();
+        void checkIfActive();
 
         Method method;
 
-        bool wasPress;
+        bool wasPress = false;
+        bool active = false;
 
-        std::size_t index;
+        uint8_t index = 0;
+        uint8_t activationIndex;
 };
 
 #endif 

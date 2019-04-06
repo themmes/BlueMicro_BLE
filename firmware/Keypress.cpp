@@ -1,16 +1,18 @@
 #include "Keypress.h"
 
 //avoid a compile time error
-namespace std {
-    void __throw_bad_alloc() {
-    }
-    void __throw_length_error( char const*e ) {
-    }
+namespace std 
+{
+    void __throw_bad_alloc() { }
+    void __throw_length_error( char const*e ) { }
 }
 
-Keypress::Keypress() : method{ }, wasPress{false} { }
+Keypress::Keypress() : method{ }, activationIndex{1} { }
 
-Keypress::Keypress(Method m) : method{m}, index{0}, wasPress{false} { }
+Keypress::Keypress(Method m) : method{m}, activationIndex{m.size()} { }
+
+Keypress::Keypress(Method m, uint8_t actIndex) 
+    : method{m}, activationIndex{actIndex} { }
 
 void Keypress::clear(unsigned long delta, bool wasPress) 
 {
@@ -25,25 +27,47 @@ void Keypress::press(unsigned long delta, bool wasPress)
 //returns a failure value (4) or the index of the first active activation
 bool Keypress::isActive()
 {
-    if (method.size() != 0 && index == method.size())
+    //if the keypress is seen as active,
+    //reset the active flag and return true
+    if (active)
     {
-        //copy the index,
-        //reset it and return the copy
-        auto i = index;
-        index = 0;
+        active = false;
 
-        return i;
+        return true;
     }
 
-    //the method is otherwise not active yet
+    //otherwise return false
     return false;
+}
+
+void Keypress::checkIfActive()
+{
+    //if the keypress isn't yet active,
+    //check whether there is a valid method
+    //and if the current index has reached
+    //the activation index
+    //
+    //if the keypress is active, no changes are made until
+    //the flag is reset by isActive()
+    if (!active)
+    {
+        active = (method.size() != 0 && index == activationIndex);
+    }
 }
 
 void Keypress::updateIndex()
 {
-    if (index != method.size()) 
+    //iterates the index forwards
+    index++;
+
+    //checks whether the keypress is now active
+    checkIfActive();
+
+    //reset the index if the end of the 
+    //activation method has been reached
+    if (index == method.size())
     {
-        index++;
+        index = 0;
     }
 }
 
