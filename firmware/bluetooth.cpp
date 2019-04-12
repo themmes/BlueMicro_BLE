@@ -52,7 +52,16 @@ void setupBluetooth(void)
   Bluefruit.setName(DEVICE_NAME);                                             // Defined in keyboard_config.h
   Bluefruit.configUuid128Count(UUID128_COUNT);                                // Defined in bluetooth_config.h
   Bluefruit.configServiceChanged(true);                                       // helps troubleshooting...
-  Bluefruit.setConnInterval(9, 12);
+
+  //no Bluefruit.setConnInterval() function in library version 0.10.1
+  //Bluefruit.setIntervalMS(9, 12);
+  //
+  //
+#if BLE_CENTRAL == 1
+  Bluefruit.Central.setConnInterval(9,12);
+#else
+  Bluefruit.Periph.setConnInterval(9,12);
+#endif
 
   // Configure and Start Device Information Service
   bledis.setManufacturer(MANUFACTURER_NAME);                                  // Defined in keyboard_config.h
@@ -107,7 +116,10 @@ uint8_t Linkdata[7] = {0,0,0,0,0,0,0};
 #if BLE_HID == 1
   blehid.begin();
   // Set callback for set LED from central
-  blehid.setKeyboardLedCallback(set_keyboard_led);
+  // TODO
+  // takes two parameters with library version 0.10.1
+  // uint16_t conn_hdl and uint8_t leds_bitmap
+  // blehid.setKeyboardLedCallback(set_keyboard_led);
 #endif
 
   /* Set connection interval (min, max) to your perferred value.
@@ -123,8 +135,10 @@ uint8_t Linkdata[7] = {0,0,0,0,0,0,0};
   KBLinkClientChar_Buffer.begin();
   KBLinkClientChar_Buffer.setNotifyCallback(notify_callback);
   KBLinkClientChar_Layer_Request.begin(); 
-  Bluefruit.setConnectCallback(prph_connect_callback);
-  Bluefruit.setDisconnectCallback(prph_disconnect_callback);  
+
+  //Bluefruit.setConnectCallback(prph_connect_callback);
+  //Bluefruit.setDisconnectCallback(prph_disconnect_callback);  
+
   Bluefruit.Scanner.setRxCallback(scan_callback);
   Bluefruit.Scanner.restartOnDisconnect(true);
   Bluefruit.Scanner.filterRssi(-80);                                              // limits very far away devices - reduces load
@@ -277,9 +291,10 @@ void scan_callback(ble_gap_evt_adv_report_t* report)
 /**************************************************************************************************************************/
 void prph_connect_callback(uint16_t conn_handle)
 {
-  char peer_name[32] = { 0 };
-  Bluefruit.Gap.getPeerName(conn_handle, peer_name, sizeof(peer_name));
-  LOG_LV1("PRPH","Connected to %i %s",conn_handle,peer_name  );
+  //char peer_name[32] = { 0 };
+  //Bluefruit.Gap.getPeerName(conn_handle, peer_name, sizeof(peer_name));
+  //LOG_LV1("PRPH","Connected to %i %s",conn_handle,peer_name  );
+  LOG_LV1("PRPH","Connected to %i",conn_handle);
 }
 
 /**************************************************************************************************************************/
@@ -298,9 +313,12 @@ void prph_disconnect_callback(uint16_t conn_handle, uint8_t reason)
 /**************************************************************************************************************************/
 void cent_connect_callback(uint16_t conn_handle)
 {
-  char peer_name[32] = { 0 };
-  Bluefruit.Gap.getPeerName(conn_handle, peer_name, sizeof(peer_name));
-  LOG_LV1("CENTRL","Connected to %i %s",conn_handle,peer_name );
+  //char peer_name[32] = { 0 };
+  //TODO
+  //not working with library 0.10.1
+  //Bluefruit.Gap.getPeerName(conn_handle, peer_name, sizeof(peer_name));
+  //LOG_LV1("CENTRL","Connected to %i %s",conn_handle,peer_name );
+  //
   if (KBLinkClientService.discover(conn_handle)) // validating that KBLink service is available to this connection
   {
     if (KBLinkClientChar_Layers.discover()) {
@@ -314,7 +332,10 @@ void cent_connect_callback(uint16_t conn_handle)
   {
     LOG_LV1("CENTRL","No KBLink Service on this connection"  );
     // disconect since we couldn't find KBLink service
-    Bluefruit.Central.disconnect(conn_handle);
+    //TODO
+    //BLECentral doesn't have member function disconnect() 
+    //since library version 0.10.1
+    Bluefruit.disconnect(conn_handle);
   }   
 }
 /**************************************************************************************************************************/
@@ -326,8 +347,8 @@ void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason)
   (void) reason;
   LOG_LV1("CENTRL","Disconnected"  );
   // if the half disconnects, we need to make sure that the received buffer is set to empty.
-            Keyboard::updateRemoteLayer(0);  // Layer is only a single uint8
-           Keyboard::updateRemoteReport( {0, 0, 0, 0, 0, 0, 0} );
+  Keyboard::updateRemoteLayer(0);  // Layer is only a single uint8
+  Keyboard::updateRemoteReport( {0, 0, 0, 0, 0, 0, 0} );
 }
 #endif
 
