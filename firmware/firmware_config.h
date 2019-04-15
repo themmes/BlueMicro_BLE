@@ -1,5 +1,5 @@
 /*
-Copyright 2018 <Pierre Constantineau>
+Copyright 2018 <Pierre Constantineau, Julian Komaromy>
 
 3-Clause BSD License
 
@@ -24,70 +24,45 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "avr_mapping.h"
 #include "keyboard_config.h"
 
-#if KEYBOARD_SIDE == LEFT
-#define BLE_PAIRS 1
-#define PERIPHERAL_COUNT 1
+//the matrix should be pretty much always
+//scanned as well as the keys sent
 #define MATRIX_SCAN 1
 #define SEND_KEYS 1
+
+//default values for the LEFT side of the keyboard
+#if KEYBOARD_SIDE == LEFT
+#define BLE_PERIPHERAL_COUNT 1
+#define BLE_HID_COUNT 1
+#define BLE_CENTRAL_COUNT 1
 #define DEVICE_NAME DEVICE_NAME_L
+#define KBLINK_CLIENT 
+
+//default values for the RIGHT side of the keyboard
 #elif KEYBOARD_SIDE == RIGHT
-#define BLE_PAIRS 1
-#define PERIPHERAL_COUNT 1
-#define CENTRAL_COUNT 0
-#define MATRIX_SCAN 1
-#define SEND_KEYS 1
+#define BLE_PERIPHERAL_COUNT 1
+#define BLE_HID_COUNT 0
+#define BLE_CENTRAL_COUNT 0
 #define DEVICE_NAME DEVICE_NAME_R
-#elif KEYBOARD_SIDE == MASTER
-#define BLE_PAIRS 0
-#define BLE_HID 1
-#ifndef PERIPHERAL_COUNT
-  #define PERIPHERAL_COUNT 1
-#endif
-#define CENTRAL_COUNT 0
-#define MATRIX_SCAN 1
-#define SEND_KEYS 1
-#define DEVICE_NAME DEVICE_NAME_M
+#define KBLINK_SERVER
+
+//default values for a SINGLE keyboard (a non-split keyboard)
+#elif KEYBOARD_SIDE == SINGLE
+#define BLE_PERIPHERAL_COUNT 1
+#define BLE_HID_COUNT 1
+#define BLE_CENTRAL_COUNT 0
+#define DEVICE_NAME DEVICE_NAME_S
+
+//default values for a TEST keyboard (might be nonsensical)
 #elif KEYBOARD_SIDE == TEST
-#define BLE_CENTRAL 0  /// 
-#define BLE_PERIPHERAL 0 /// 
-#define BLE_PAIRS 0  /// NOT SURE WHAT THIS ACTIVATES
-#define BLE_HID 1 //1 //  
-#define PERIPHERAL_COUNT 1 //1  
-#define CENTRAL_COUNT 0
-#define MATRIX_SCAN 1 // 1 
-#define SEND_KEYS 1 // 1 //
-#define DEVICE_NAME DEVICE_NAME_M
+#define BLE_CENTRAL_COUNT 0
+#define BLE_PERIPHERAL_COUNT 0 
+#define BLE_HID_COUNT 1 
+#define DEVICE_NAME DEVICE_NAME_S
+
+//one of the previous values has to be defined
+#else
+#pragma GCC error "Keyboard side is neither LEFT or RIGHT nor MASTER"
 #endif
-
-//set default modes for the halves
-#ifndef KEYBOARD_MODE 
-
-#if KEYBOARD_SIDE == LEFT
-#define KEYBOARD_MODE DEFAULT //LEFT defaults to central (DEFAULT)
-#elif KEYBOARD_SIDE == RIGHT
-#define KEYBOARD_MODE SLAVE //RIGHT defaults to peripheral (SLAVE) 
-#elif KEYBOARD_SIDE == MASTER
-#define KEYBOARD_MODE MASTER //MASTER defaults to master (only one keyboard) 
-#endif
-
-#endif /* ifndef KEYBOARD_MODE */
-
-#if KEYBOARD_MODE == DEFAULT
-#define BLE_HID 1
-#define BLE_CENTRAL 1
-#define CENTRAL_COUNT 1
-#define BLE_PERIPHERAL 0
-#elif KEYBOARD_MODE == SLAVE
-#define BLE_HID 0
-#define BLE_CENTRAL 0
-#define CENTRAL_COUNT 0
-#define BLE_PERIPHERAL 1
-#elif KEYBOARD_MODE == MASTER
-#define BLE_HID 1
-#define BLE_CENTRAL 0
-#define CENTRAL_COUNT 0
-#define BLE_PERIPHERAL 0
-#endif /* KEYBOARD_MODE */
 
 #ifndef BOOT_MODE_COMMANDS
 #define BOOT_MODE_COMMANDS {{KC_SPACE, STATE_MONITOR_MODE},{ KC_B,  STATE_BOOT_CLEAR_BONDS },{ KC_F, STATE_BOOT_SERIAL_DFU},{ KC_W, STATE_BOOT_WIRELESS_DFU}}
@@ -99,6 +74,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #endif
 
 /*
+ * now defined in VKey.h
 #ifndef DEBOUNCETIME 
 #define DEBOUNCETIME 10
 #endif
@@ -113,8 +89,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef BLE_LIPO_MONITORING
 #define BLE_LIPO_MONITORING 0
 #endif
-
-
 
 #define SLEEPING_DELAY 30000              // when it's not connected, 30 seconds is good.
 #define SLEEPING_DELAY_CONNECTED 600000   // 2 minutes is way too fast and really ennoying. making it 10 minutes

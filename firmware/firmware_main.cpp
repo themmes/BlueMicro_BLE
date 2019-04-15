@@ -147,17 +147,16 @@ void sendKeyPresses() {
         }
     }
     
-#if BLE_PERIPHERAL ==1   | BLE_CENTRAL ==1                            
-    /**************************************************/
     //layer comms 
-    
+#if defined(KBLINK_CLIENT) || defined(KBLINK_SERVER)
     if(Keyboard::getLayerChanged())                                              
     {   
         sendlayer(Keyboard::getLocalLayer());
         LOG_LV1("MXSCAN","Layer %i  %i", millis(), Keyboard::getLocalLayer());
     } 
-#endif                                                                /**************************************************/
+#endif
 }
+
 /**************************************************************************************************************************/
 // put your main code here, to run repeatedly:
 /**************************************************************************************************************************/
@@ -167,10 +166,10 @@ void loop() {
     unsigned long timesincelastkeypress = millis() - Keyboard::getLastPressed();
 
 #if SLEEP_ACTIVE == 1
-    gotoSleep(timesincelastkeypress,Bluefruit.connected());
+    gotoSleep(timesincelastkeypress, Bluefruit.connected());
 #endif
 
-#if BLE_CENTRAL == 1  
+#if BLE_CENTRAL_COUNT != 0  
     if ((timesincelastkeypress < 10)
             && !Bluefruit.Central.connected()
             && !Bluefruit.Scanner.isRunning())

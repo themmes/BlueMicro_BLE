@@ -1,5 +1,5 @@
 /*
-Copyright 2018 <Pierre Constantineau>
+Copyright 2018 <Pierre Constantineau, Julian Komaromy>
 
 3-Clause BSD License
 
@@ -19,199 +19,219 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 */
 #include "bluetooth.h"
 
-BLEDis bledis;                                                                    // Device Information Service
+// Device Information Service
+BLEDis bledis;  
 
-extern KeyScanner keys;
+//This is usually on the MASTER/CENTRAL board
+#if BLE_HID_COUNT != 0
+//The handle for the HID connection
+uint16_t hid_conn_hdl;
 
- #if BLE_HID == 1
- uint16_t hid_conn_hdl;
- #endif 
- 
+//The HID Service;
+BLEHidAdafruit blehid;
+#endif 
+
 #if BLE_LIPO_MONITORING == 1 
 extern BLEBas blebas; 
 #endif
-#if BLE_PERIPHERAL == 1                                                             // PERIPHERAL IS THE SLAVE BOARD
-  BLEService KBLinkService = BLEService(UUID128_SVC_KEYBOARD_LINK);                 // Keyboard Link Service - Slave/Server Side                 
-  BLECharacteristic KBLinkChar_Layers        = BLECharacteristic(UUID128_CHR_KEYBOARD_LAYERS);
-  BLECharacteristic KBLinkChar_Layer_Request = BLECharacteristic(UUID128_CHR_KEYBOARD_LAYER_REQUEST);      
-  BLECharacteristic KBLinkChar_Buffer        = BLECharacteristic(UUID128_CHR_KEYBOARD_BUFFER); 
-#endif
 
-#if BLE_HID == 1                                                                    // THIS IS USUALLY ON THE MASTER/CENTRAL BOARD
-  BLEHidAdafruit blehid;                                                            // HID Service
+// PERIPHERAL IS USUALLY THE SLAVE BOARD
+//#if BLE_PERIPHERAL_COUNT != 0                                                         
+#ifdef KBLINK_SERVER
+
+// Keyboard Link Service - Slave/Server Side
+BLEService KBLinkService = BLEService(UUID128_SVC_KEYBOARD_LINK);
+BLECharacteristic KBLinkChar_Layers        = BLECharacteristic(UUID128_CHR_KEYBOARD_LAYERS);
+BLECharacteristic KBLinkChar_Layer_Request = BLECharacteristic(UUID128_CHR_KEYBOARD_LAYER_REQUEST); 
+BLECharacteristic KBLinkChar_Buffer        = BLECharacteristic(UUID128_CHR_KEYBOARD_BUFFER); 
 #endif
 
 // ToDo: provision for multiple master/slave links
-#if BLE_CENTRAL == 1                                                                // CENTRAL IS THE MASTER BOARD
-  BLEClientService KBLinkClientService = BLEClientService(UUID128_SVC_KEYBOARD_LINK);     // Keyboard Link Service Client - Master/Client Side  
-  BLEClientCharacteristic KBLinkClientChar_Layers        = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_LAYERS);
-  BLEClientCharacteristic KBLinkClientChar_Layer_Request = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_LAYER_REQUEST);
-  BLEClientCharacteristic KBLinkClientChar_Buffer        = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_BUFFER); 
+//
+// CENTRAL IS THE MASTER BOARD                                                                
+//#if BLE_CENTRAL_COUNT != 0
+//
+#ifdef KBLINK_CLIENT
+//Keyboard Link Service Client - Master/Client Side  
+BLEClientService KBLinkClientService = BLEClientService(UUID128_SVC_KEYBOARD_LINK);     
+BLEClientCharacteristic KBLinkClientChar_Layers        = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_LAYERS);
+BLEClientCharacteristic KBLinkClientChar_Layer_Request = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_LAYER_REQUEST);
+BLEClientCharacteristic KBLinkClientChar_Buffer        = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_BUFFER); 
 #endif
 /**************************************************************************************************************************/
 void setupBluetooth(void)
 {
 
-  Bluefruit.begin(PERIPHERAL_COUNT,CENTRAL_COUNT);                            // Defined in firmware_config.h
-  Bluefruit.autoConnLed(false);                                               // make sure the BlueFruit connection LED is not toggled.
-  Bluefruit.setTxPower(DEVICE_POWER);                                         // Defined in bluetooth_config.h
-  Bluefruit.setName(DEVICE_NAME);                                             // Defined in keyboard_config.h
-  Bluefruit.configUuid128Count(UUID128_COUNT);                                // Defined in bluetooth_config.h
-  Bluefruit.configServiceChanged(true);                                       // helps troubleshooting...
+    //Defined in firmware_config.h
+    Bluefruit.begin(BLE_PERIPHERAL_COUNT, BLE_CENTRAL_COUNT);
 
-/*
-  //no Bluefruit.setConnInterval() function in library version 0.10.1
-  //Bluefruit.setIntervalMS(9, 12);
-  //
-  
-#if BLE_CENTRAL == 1
-  Bluefruit.Central.setConnInterval(9,12);
+    //make sure the BlueFruit connection LED is not toggled.
+    Bluefruit.autoConnLed(false);
+    // Defined in bluetooth_config.h
+    Bluefruit.setTxPower(DEVICE_POWER);
+    Bluefruit.configUuid128Count(UUID128_COUNT);
+    
+    // Defined in keyboard_config.h
+    Bluefruit.setName(DEVICE_NAME); 
+    
+    // helps troubleshooting...
+    Bluefruit.configServiceChanged(true);
+
+    /*
+    //no Bluefruit.setConnInterval() function in library version 0.10.1
+    //Bluefruit.setIntervalMS(9, 12);
+    //
+
+#if BLE_CENTRAL_COUNT == 1
+Bluefruit.Central.setConnInterval(9,12);
 #else
-  Bluefruit.Periph.setConnInterval(9,12);
+Bluefruit.Periph.setConnInterval(9,12);
 #endif
 */
-  //********Bluefruit.setConnInterval(9, 12);                                 // 0.10.1: not needed for master...
+    //********Bluefruit.setConnInterval(9, 12);                                 // 0.10.1: not needed for master...
 
-  // Configure and Start Device Information Service
-  bledis.setManufacturer(MANUFACTURER_NAME);                                  // Defined in keyboard_config.h
-  bledis.setModel(DEVICE_MODEL);                                              // Defined in keyboard_config.h
-  bledis.begin();
+    // Configure and Start Device Information Service
+    bledis.setManufacturer(MANUFACTURER_NAME);                                  // Defined in keyboard_config.h
+    bledis.setModel(DEVICE_MODEL);                                              // Defined in keyboard_config.h
+    bledis.begin();
 
-  #if BLE_LIPO_MONITORING == 1
-  // Configure and Start Battery Service
-  blebas.begin();
-  blebas.write(100); // put the battery level at 100% - until it is updated by the battery monitoring loop.
-  readVBAT(); // Get a single ADC sample and throw it away
-  #endif
-  
-#if BLE_PERIPHERAL == 1
-uint8_t Linkdata[7] = {0,0,0,0,0,0,0};
-  // Configure Keyboard Link Service
-  KBLinkService.begin();
-  
-  Bluefruit.Periph.setConnectCallback(prph_connect_callback);
-  Bluefruit.Periph.setDisconnectCallback(prph_disconnect_callback);  
-  
-  KBLinkChar_Layers.setProperties(CHR_PROPS_NOTIFY+ CHR_PROPS_READ);
-  KBLinkChar_Layers.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
-  KBLinkChar_Layers.setFixedLen(1);
-  KBLinkChar_Layers.setUserDescriptor("Keyboard Layer");
-  KBLinkChar_Layers.setCccdWriteCallback(cccd_callback,true);     /// 0.10.1 - second parameter is the "use adafruit calback" to call adafruit's method before ours.  Not sure what it does.
-  KBLinkChar_Layers.begin();
-  KBLinkChar_Layers.write8(0);  // initialize with layer 0
+#if BLE_LIPO_MONITORING == 1
+    // Configure and Start Battery Service
+    blebas.begin();
+    blebas.write(100); // put the battery level at 100% - until it is updated by the battery monitoring loop.
+    readVBAT(); // Get a single ADC sample and throw it away
+#endif
 
-  KBLinkChar_Layer_Request.setProperties(CHR_PROPS_WRITE + CHR_PROPS_WRITE_WO_RESP);
-  KBLinkChar_Layer_Request.setPermission(SECMODE_NO_ACCESS, SECMODE_OPEN );
-  KBLinkChar_Layer_Request.setFixedLen(1);
-  KBLinkChar_Layer_Request.setUserDescriptor("Keyboard Layer Request");
-  KBLinkChar_Layer_Request.setWriteCallback(layer_request_callback);
-  KBLinkChar_Layer_Request.begin();
-  KBLinkChar_Layer_Request.write8(0);  // initialize with layer 0
+#if BLE_PERIPHERAL_COUNT != 0
+    Bluefruit.Periph.setConnectCallback(prph_connect_callback);
+    Bluefruit.Periph.setDisconnectCallback(prph_disconnect_callback);  
+#endif
+
+#ifdef KBLINK_SERVER
+    uint8_t Linkdata[7] = {0,0,0,0,0,0,0};
+    // Configure Keyboard Link Service
+    KBLinkService.begin();
+
+    KBLinkChar_Layers.setProperties(CHR_PROPS_NOTIFY+ CHR_PROPS_READ);
+    KBLinkChar_Layers.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
+    KBLinkChar_Layers.setFixedLen(1);
+    KBLinkChar_Layers.setUserDescriptor("Keyboard Layer");
+
+    //0.10.1 - second parameter is the "use adafruit calback" 
+    //to call adafruit's method before ours.  Not sure what it does.
+    KBLinkChar_Layers.setCccdWriteCallback(cccd_callback,true);     
+    KBLinkChar_Layers.begin();
     
-  KBLinkChar_Buffer.setProperties(CHR_PROPS_NOTIFY+ CHR_PROPS_READ);
-  KBLinkChar_Buffer.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
-  KBLinkChar_Buffer.setFixedLen(7);
-  KBLinkChar_Buffer.setUserDescriptor("Keyboard HID Buffer");
-  KBLinkChar_Buffer.setCccdWriteCallback(cccd_callback,true);     /// 0.10.1 - second parameter is the "use adafruit calback" to call adafruit's method before ours.  Not sure what it does.
-  KBLinkChar_Buffer.begin();
-  KBLinkChar_Buffer.write(Linkdata, 7);  // initialize with empty buffer
+    //initialize with layer 0 
+    KBLinkChar_Layers.write8(0); 
 
- #endif
- 
+    KBLinkChar_Layer_Request.setProperties(CHR_PROPS_WRITE + CHR_PROPS_WRITE_WO_RESP);
+    KBLinkChar_Layer_Request.setPermission(SECMODE_NO_ACCESS, SECMODE_OPEN );
+    KBLinkChar_Layer_Request.setFixedLen(1);
+    KBLinkChar_Layer_Request.setUserDescriptor("Keyboard Layer Request");
+    KBLinkChar_Layer_Request.setWriteCallback(layer_request_callback);
+    KBLinkChar_Layer_Request.begin();
+    KBLinkChar_Layer_Request.write8(0);  // initialize with layer 0
+
+    KBLinkChar_Buffer.setProperties(CHR_PROPS_NOTIFY+ CHR_PROPS_READ);
+    KBLinkChar_Buffer.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
+    KBLinkChar_Buffer.setFixedLen(7);
+    KBLinkChar_Buffer.setUserDescriptor("Keyboard HID Buffer");
+    KBLinkChar_Buffer.setCccdWriteCallback(cccd_callback,true);     /// 0.10.1 - second parameter is the "use adafruit calback" to call adafruit's method before ours.  Not sure what it does.
+    KBLinkChar_Buffer.begin();
+    KBLinkChar_Buffer.write(Linkdata, 7);  // initialize with empty buffer
+#endif
+
     /* Start BLE HID
-   * Note: Apple requires BLE device must have min connection interval >= 20m
-   * ( The smaller the connection interval the faster we could send data).
-   * However for HID and MIDI device, Apple could accept min connection interval 
-   * up to 11.25 ms. Therefore BLEHidAdafruit::begin() will try to set the min and max
-   * connection interval to 11.25  ms and 15 ms respectively for best performance.
-   */
-#if BLE_HID == 1
-  blehid.begin();
-  // Set callback for set LED from central
-  // TODO
-  // takes two parameters with library version 0.10.1
-  // uint16_t conn_hdl and uint8_t leds_bitmap
-  // blehid.setKeyboardLedCallback(set_keyboard_led);
+     * Note: Apple requires BLE device must have min connection interval >= 20m
+     * ( The smaller the connection interval the faster we could send data).
+     * However for HID and MIDI device, Apple could accept min connection interval 
+     * up to 11.25 ms. Therefore BLEHidAdafruit::begin() will try to set the min and max
+     * connection interval to 11.25  ms and 15 ms respectively for best performance.
+     */
+#if BLE_HID_COUNT != 0
+    blehid.begin();
+    // Set callback for set LED from central
+    // TODO
+    // takes two parameters with library version 0.10.1
+    // uint16_t conn_hdl and uint8_t leds_bitmap
+    // blehid.setKeyboardLedCallback(set_keyboard_led);
 #endif
 
-  /* Set connection interval (min, max) to your perferred value.
-   * Note: It is already set by BLEHidAdafruit::begin() to 11.25ms - 15ms
-   * min = 9*1.25=11.25 ms, max = 12*1.25= 15 ms 
-   */
- 
- #if BLE_CENTRAL == 1 
+    /* Set connection interval (min, max) to your perferred value.
+     * Note: It is already set by BLEHidAdafruit::begin() to 11.25ms - 15ms
+     * min = 9*1.25=11.25 ms, max = 12*1.25= 15 ms 
+     */
 
-  KBLinkClientService.begin();
-  KBLinkClientChar_Layers.begin();
-  KBLinkClientChar_Layers.setNotifyCallback(notify_callback);
-  KBLinkClientChar_Buffer.begin();
-  KBLinkClientChar_Buffer.setNotifyCallback(notify_callback);
-  KBLinkClientChar_Layer_Request.begin(); 
-
-  Bluefruit.Periph.setConnectCallback(prph_connect_callback);
-  Bluefruit.Periph.setDisconnectCallback(prph_disconnect_callback);  
-
-  Bluefruit.Scanner.setRxCallback(scan_callback);
-  Bluefruit.Scanner.restartOnDisconnect(true);
-  Bluefruit.Scanner.filterRssi(-80);                                              // limits very far away devices - reduces load
-  Bluefruit.Scanner.filterUuid(BLEUART_UUID_SERVICE, UUID128_SVC_KEYBOARD_LINK);  // looks specifically for these 2 services (A OR B) - reduces load
-  Bluefruit.Scanner.setInterval(160, 80);                                         // in unit of 0.625 ms  Interval = 100ms, Window = 50 ms
-  Bluefruit.Scanner.useActiveScan(false);                                         // If true, will fetch scan response data
-  Bluefruit.Scanner.start(0);                                                     // 0 = Don't stop scanning after 0 seconds
-
-  Bluefruit.Central.setConnectCallback(cent_connect_callback);
-  Bluefruit.Central.setDisconnectCallback(cent_disconnect_callback);
-
+#ifdef KBLINK_CLIENT
+    KBLinkClientService.begin();
+    KBLinkClientChar_Layers.begin();
+    KBLinkClientChar_Layers.setNotifyCallback(notify_callback);
+    KBLinkClientChar_Buffer.begin();
+    KBLinkClientChar_Buffer.setNotifyCallback(notify_callback);
+    KBLinkClientChar_Layer_Request.begin(); 
 #endif
+    //Bluefruit.Periph.setConnectCallback(prph_connect_callback);
+    //Bluefruit.Periph.setDisconnectCallback(prph_disconnect_callback);  
 
+#if BLE_CENTRAL_COUNT != 0 
+    Bluefruit.Scanner.setRxCallback(scan_callback);
+    Bluefruit.Scanner.restartOnDisconnect(true);
+    Bluefruit.Scanner.filterRssi(-80);                                              // limits very far away devices - reduces load
+    Bluefruit.Scanner.filterUuid(BLEUART_UUID_SERVICE, UUID128_SVC_KEYBOARD_LINK);  // looks specifically for these 2 services (A OR B) - reduces load
+    Bluefruit.Scanner.setInterval(160, 80);                                         // in unit of 0.625 ms  Interval = 100ms, Window = 50 ms
+    Bluefruit.Scanner.useActiveScan(false);                                         // If true, will fetch scan response data
+    Bluefruit.Scanner.start(0);                                                     // 0 = Don't stop scanning after 0 seconds
+
+    Bluefruit.Central.setConnectCallback(cent_connect_callback);
+    Bluefruit.Central.setDisconnectCallback(cent_disconnect_callback);
+#endif
 }
 
 
-/**************************************************************************************************************************/
-//
-/**************************************************************************************************************************/
+/***********************************************************************************************/
+/* Start advertising */
 void startAdv(void)
 {  
-  // Advertising packet
-  Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
-  Bluefruit.Advertising.addTxPower();
+    // Advertising packet
+    Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
+    Bluefruit.Advertising.addTxPower();
 
-    #if BLE_HID == 1
-  Bluefruit.Advertising.addAppearance(BLE_APPEARANCE_HID_KEYBOARD);
+#if BLE_HID_COUNT != 0
+    Bluefruit.Advertising.addAppearance(BLE_APPEARANCE_HID_KEYBOARD);
 
+    // Include BLE HID service
+    Bluefruit.Advertising.addService(blehid);
+#endif
 
-  // Include BLE HID service
-  Bluefruit.Advertising.addService(blehid);
-  #endif
-  
-  #if BLE_PERIPHERAL ==1
-   Bluefruit.Advertising.addUuid(UUID128_SVC_KEYBOARD_LINK);
-   Bluefruit.Advertising.addUuid(UUID128_CHR_KEYBOARD_LAYERS);
-   Bluefruit.Advertising.addUuid(UUID128_CHR_KEYBOARD_LAYER_REQUEST);
-   Bluefruit.Advertising.addUuid(UUID128_CHR_KEYBOARD_BUFFER); 
-   Bluefruit.Advertising.addService(KBLinkService);  /// Advertizing Keyboard Link Service
-  #endif
+#ifdef KBLINK_SERVER
+    Bluefruit.Advertising.addUuid(UUID128_SVC_KEYBOARD_LINK);
+    Bluefruit.Advertising.addUuid(UUID128_CHR_KEYBOARD_LAYERS);
+    Bluefruit.Advertising.addUuid(UUID128_CHR_KEYBOARD_LAYER_REQUEST);
+    Bluefruit.Advertising.addUuid(UUID128_CHR_KEYBOARD_BUFFER); 
+    Bluefruit.Advertising.addService(KBLinkService);  /// Advertizing Keyboard Link Service
+#endif
 
-  // There is no other service for Central 
-  // ToDo: Consider Configuration Service... Save config to board, reset to default values, go to DFU, etc...
-  
-  // There is probably not enough room for the dev name in the advertising packet. Putting it in the ScanResponse Packet
-  Bluefruit.ScanResponse.addName();
-  
-  /* Start Advertising
-   * - Enable auto advertising if disconnected
-   * - Interval:  fast mode = 20 ms, slow mode = 152.5 ms
-   * - Timeout for fast mode is 30 seconds
-   * - Start(timeout) with timeout = 0 will advertise forever (until connected)
-   * 
-   * For recommended advertising interval
-   * https://developer.apple.com/library/content/qa/qa1931/_index.html   
-   */
-   
-  Bluefruit.Advertising.restartOnDisconnect(true);
-  Bluefruit.Advertising.setInterval(32, 244);    // in unit of 0.625 ms
-  Bluefruit.Advertising.setFastTimeout(30);      // number of seconds in fast mode
-  Bluefruit.Advertising.start(0);                // 0 = Don't stop advertising after n seconds
+    // There is no other service for Central 
+    // ToDo: Consider Configuration Service... Save config to board, reset to default values, go to DFU, etc...
+
+    // There is probably not enough room for the dev name in the advertising packet. Putting it in the ScanResponse Packet
+    Bluefruit.ScanResponse.addName();
+
+    /* Start Advertising
+     * - Enable auto advertising if disconnected
+     * - Interval:  fast mode = 20 ms, slow mode = 152.5 ms
+     * - Timeout for fast mode is 30 seconds
+     * - Start(timeout) with timeout = 0 will advertise forever (until connected)
+     * 
+     * For recommended advertising interval
+     * https://developer.apple.com/library/content/qa/qa1931/_index.html   
+     */
+
+    Bluefruit.Advertising.restartOnDisconnect(true);
+    Bluefruit.Advertising.setInterval(32, 244);    // in unit of 0.625 ms
+    Bluefruit.Advertising.setFastTimeout(30);      // number of seconds in fast mode
+    Bluefruit.Advertising.start(0);                // 0 = Don't stop advertising after n seconds
 }
 
 
@@ -219,11 +239,11 @@ void startAdv(void)
 /**************************************************************************************************************************/
 // This callback is called when a Notification update even occurs (This occurs on the client)
 /**************************************************************************************************************************/
-#if BLE_CENTRAL == 1
+#if BLE_CENTRAL_COUNT != 0 && defined(KBLINK_CLIENT)
 void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
 {
     LOG_LV1("CB NOT","notify_callback: Length %i data[0] %i" ,len, data[0]);
-    if (len>0)  // check if there really is data...
+    if (len > 0)  // check if there really is data...
     {
         if (chr->uuid == KBLinkClientChar_Layers.uuid){
             LOG_LV1("CB NOT","notify_callback: Layers Data");
@@ -237,99 +257,18 @@ void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
         }
     }
 }
-#endif
-/**************************************************************************************************************************/
-// This callback is called when a Notification subscription event occurs (This occurs on the server)
-/**************************************************************************************************************************/
- #if BLE_PERIPHERAL == 1
-void cccd_callback(uint16_t conn_hdl, BLECharacteristic* chr, uint16_t cccd_value)    
-{
-    LOG_LV1("CBCCCD","notify_callback: %i " ,cccd_value);
-    
-    // Check the characteristic this CCCD update is associated with in case
-    // this handler is used for multiple CCCD records.
-    if (chr->uuid == KBLinkChar_Layers.uuid) {
-        if (chr->notifyEnabled()) {              
-            LOG_LV1("CBCCCD","Layers 'Notify' enabled");
-        } else {
-            LOG_LV1("CBCCCD","Layers 'Notify' disabled");
-        }
-    }
-      if (chr->uuid == KBLinkChar_Layer_Request.uuid) {
-          if (chr->notifyEnabled()) {
-            LOG_LV1("CBCCCD","KBLinkChar_Layer_Request 'Notify' enabled");
-          } else {
-            LOG_LV1("CBCCCD","KBLinkChar_Layer_Request 'Notify' disabled");
-          }
-      }
-      if (chr->uuid == KBLinkChar_Buffer.uuid) {
-          if (chr->notifyEnabled()) {
-            LOG_LV1("CBCCCD","KBLinkChar_Buffer 'Notify' enabled");
-          } else {
-            LOG_LV1("CBCCCD","KBLinkChar_Buffer 'Notify' disabled");
-          }
-      }
-      
-}
-/**************************************************************************************************************************/
-// This callback is called layer_request when characteristic is being written to.  This occurs on the server (Peripheral)
-// Called by KBLinkChar_Layer_Request
-/**************************************************************************************************************************/
-void layer_request_callback (uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len)
-{
-LOG_LV1("CB_CHR","layer_request_callback: len %i offset %i  data %i" ,len, data[0]);
-      if (len>0)
-      {
-        // update state
-        Keyboard::updateRemoteLayer(data[0]);
-      }  
-}
-#endif
 
 /**************************************************************************************************************************/
 // This callback is called when the scanner finds a device. This happens on the Client/Central
 /**************************************************************************************************************************/
-#if BLE_CENTRAL == 1
 void scan_callback(ble_gap_evt_adv_report_t* report)
 {
-  if ( Bluefruit.Scanner.checkReportForService(report, KBLinkClientService) )
-  {
-    LOG_LV1("KBLINK","KBLink service detected. Connecting ... ");
-    Bluefruit.Central.connect(report);
+    if ( Bluefruit.Scanner.checkReportForService(report, KBLinkClientService) )
+    {
+        LOG_LV1("KBLINK","KBLink service detected. Connecting ... ");
+        Bluefruit.Central.connect(report);
     } 
 }
-
-/**************************************************************************************************************************/
-// This callback is called when the master connects to a slave
-/**************************************************************************************************************************/
-void prph_connect_callback(uint16_t conn_handle)
-{
-    char peer_name[32] = { 0 };
-    BLEConnection* connection = Bluefruit.Connection(conn_handle);
-    connection->getPeerName(peer_name, sizeof(peer_name));
-    LOG_LV1("PRPH","Connected to %i %s",conn_handle,peer_name  );
-
-    // if HID then save connection handle to HID_connection handle
-#if BLE_HID == 1
-    hid_conn_hdl = conn_handle;
-#endif
-}
-
-/**************************************************************************************************************************/
-// This callback is called when the master disconnects from a slave
-/**************************************************************************************************************************/
-void prph_disconnect_callback(uint16_t conn_handle, uint8_t reason)
-{
-    (void) conn_handle;
-    (void) reason;
-    LOG_LV1("PRPH","Disconnected"  );
-
-    // if HID then save connection handle to HID_connection handle
-#if BLE_HID == 1
-    hid_conn_hdl = 0;
-#endif
-}
-
 
 /**************************************************************************************************************************/
 // This callback is called when the central connects to a peripheral
@@ -370,7 +309,90 @@ void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason)
     Keyboard::updateRemoteLayer(0);  // Layer is only a single uint8
     Keyboard::updateRemoteReport( {0, 0, 0, 0, 0, 0, 0} );
 }
+#endif /* BLE_CENTRAL_COUNT != 0 || defined(KBLINK_CLIENT) */
+
+/**************************************************************************************************************************/
+// This callback is called when a Notification subscription event occurs (This occurs on the server)
+/**************************************************************************************************************************/
+#ifdef KBLINK_SERVER
+void cccd_callback(uint16_t conn_hdl, BLECharacteristic* chr, uint16_t cccd_value)    
+{
+    LOG_LV1("CBCCCD","notify_callback: %i " ,cccd_value);
+
+    // Check the characteristic this CCCD update is associated with in case
+    // this handler is used for multiple CCCD records.
+    if (chr->uuid == KBLinkChar_Layers.uuid) {
+        if (chr->notifyEnabled()) {              
+            LOG_LV1("CBCCCD","Layers 'Notify' enabled");
+        } else {
+            LOG_LV1("CBCCCD","Layers 'Notify' disabled");
+        }
+    }
+    if (chr->uuid == KBLinkChar_Layer_Request.uuid) {
+        if (chr->notifyEnabled()) {
+            LOG_LV1("CBCCCD","KBLinkChar_Layer_Request 'Notify' enabled");
+        } else {
+            LOG_LV1("CBCCCD","KBLinkChar_Layer_Request 'Notify' disabled");
+        }
+    }
+    if (chr->uuid == KBLinkChar_Buffer.uuid) {
+        if (chr->notifyEnabled()) {
+            LOG_LV1("CBCCCD","KBLinkChar_Buffer 'Notify' enabled");
+        } else {
+            LOG_LV1("CBCCCD","KBLinkChar_Buffer 'Notify' disabled");
+        }
+    }
+
+}
+/**************************************************************************************************************************/
+// This callback is called layer_request when characteristic is being written to.  This occurs on the server (Peripheral)
+// Called by KBLinkChar_Layer_Request
+/**************************************************************************************************************************/
+void layer_request_callback (uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len)
+{
+    LOG_LV1("CB_CHR","layer_request_callback: len %i offset %i  data %i" ,len, data[0]);
+    if (len>0)
+    {
+        // update state
+        Keyboard::updateRemoteLayer(data[0]);
+    }  
+}
 #endif
+
+/**************************************************************************************************************************/
+// This callback is called when the master connects to a slave
+/**************************************************************************************************************************/
+
+#if BLE_PERIPHERAL_COUNT != 0
+void prph_connect_callback(uint16_t conn_handle)
+{
+    char peer_name[32] = { 0 };
+    BLEConnection* connection = Bluefruit.Connection(conn_handle);
+    connection->getPeerName(peer_name, sizeof(peer_name));
+    LOG_LV1("PRPH","Connected to %i %s",conn_handle,peer_name  );
+
+    // if HID then save connection handle to HID_connection handle
+#if BLE_HID_COUNT != 0
+    hid_conn_hdl = conn_handle;
+#endif
+}
+
+/**************************************************************************************************************************/
+// This callback is called when the master disconnects from a slave
+/**************************************************************************************************************************/
+void prph_disconnect_callback(uint16_t conn_handle, uint8_t reason)
+{
+    (void) conn_handle;
+    (void) reason;
+    LOG_LV1("PRPH", "Disconnected");
+
+    // if HID then save connection handle to HID_connection handle
+#if BLE_HID_COUNT == 1
+    hid_conn_hdl = 0;
+#endif
+}
+
+#endif /* BLE_PERIPHERAL_COUNT != 0 */
 
 /**************************************************************************************************************************/
 /**
@@ -398,23 +420,23 @@ void set_keyboard_led(uint16_t conn_handle, uint8_t led_bitmap)
 void sendlayer(uint8_t layer)
 {
     // Note that HID standard only has a buffer of 6 keys (plus modifiers)
-#if BLE_PERIPHERAL ==1  
-    KBLinkChar_Layers.notify8(layer);                   // Peripheral->central uses the subscribe/notify mechanism
-#endif
-
-#if BLE_CENTRAL ==1
+    //#if BLE_PERIPHERAL_COUNT !=0  
+#ifdef KBLINK_SERVER
+    //Peripheral->central uses the subscribe/notify mechanism
+    KBLinkChar_Layers.notify8(layer);                   
+#elif defined(KBLINK_CLIENT)
     LOG_LV1("MXSCAN","Sending Layer %i  %i" ,millis(),layer );
     if (KBLinkClientChar_Layer_Request.discover()) {
         uint16_t msg = KBLinkClientChar_Layer_Request.write8_resp(layer);       // Central->Peripheral uses the write mechanism
         LOG_LV1("MXSCAN","Sending Layer results  %i" ,msg);
     }
-#endif 
+#endif
 }
 /**************************************************************************************************************************/
 void sendKeys(uint8_t currentReport[8])
 {
 
-#if BLE_HID == 1  
+#if BLE_HID_COUNT != 0  
     uint8_t keycode[6];
     uint8_t layer = 0;
     uint8_t mods = 0;
@@ -437,26 +459,26 @@ void sendKeys(uint8_t currentReport[8])
     LOG_LV2("HID","Sending blehid.keyboardReport " );
 #endif
 
-#if BLE_PERIPHERAL == 1  
+#ifdef KBLINK_SERVER
     KBLinkChar_Buffer.notify(currentReport, 7);
 #endif
 
-#if BLE_CENTRAL == 1
+#if BLE_CENTRAL_COUNT != 0
     // Only send layer to slaves - send nothing here
 #endif 
 }
 /**************************************************************************************************************************/
 void sendRelease(uint8_t currentReport[8])
 {
-#if BLE_HID == 1
+#if BLE_HID_COUNT != 0
     blehid.keyRelease(hid_conn_hdl);                                             // HID uses the standard blehid service
     LOG_LV2("HID","Sending blehid.keyRelease " );
 #endif
-#if BLE_PERIPHERAL ==1     
-    KBLinkChar_Buffer.notify(currentReport,7);                       // Peripheral->central uses the subscribe/notify mechanism
+    //#if BLE_PERIPHERAL_COUNT != 0 && BLE_HID == 0 
+#ifdef KBLINK_SERVER
+    //Peripheral->central uses the subscribe/notify mechanism
+    KBLinkChar_Buffer.notify(currentReport, 7);                       
 #endif
-#if BLE_CENTRAL ==1
     //Only send layer to slaves
     //Central does not need to send the buffer to the Peripheral.
-#endif
 }

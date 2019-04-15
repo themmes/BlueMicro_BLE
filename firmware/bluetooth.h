@@ -28,8 +28,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "Keyboard.h"
 #include "battery.h"
 
-
-
 void setupBluetooth(void);
 void startAdv(void);
 void set_keyboard_led(uint16_t conn_handle, uint8_t led_bitmap);
@@ -37,23 +35,25 @@ void set_keyboard_led(uint16_t conn_handle, uint8_t led_bitmap);
 void sendKeys(uint8_t currentReport[8]);
 void sendRelease(uint8_t currentReport[8]);
 
-#if BLE_PERIPHERAL ==1   | BLE_CENTRAL ==1 
+#if defined(KBLINK_CLIENT) || defined (KBLINK_CLIENT)
 void sendlayer(uint8_t layer);
 #endif
 
-#if BLE_PERIPHERAL == 1
-    void cccd_callback(uint16_t conn_hdl,BLECharacteristic* chr, uint16_t cccd_value)  ;
-    void layer_request_callback (uint16_t conn_hdl,BLECharacteristic* chr, uint8_t* data, uint16_t len);
-#endif
-
-
-#if BLE_CENTRAL == 1
-    void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len);
-    void scan_callback(ble_gap_evt_adv_report_t* report);
+#if BLE_PERIPHERAL_COUNT != 0
     void prph_connect_callback(uint16_t conn_handle);
     void prph_disconnect_callback(uint16_t conn_handle, uint8_t reason);
-    void cent_connect_callback(uint16_t conn_handle);
-    void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason);
 #endif
 
+#if BLE_CENTRAL != 0 && defined(KBLINK_CLIENT)
+    void cent_connect_callback(uint16_t conn_handle);
+    void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason);
+    void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len);
+    void scan_callback(ble_gap_evt_adv_report_t* report);
+#endif
+
+#ifdef KBLINK_SERVER
+    void cccd_callback(uint16_t conn_hdl,BLECharacteristic* chr, uint16_t cccd_value)  ;
+    void layer_request_callback (uint16_t conn_hdl,BLECharacteristic* chr, 
+            uint8_t* data, uint16_t len);
+#endif
 #endif /* BLUETOOTH_H */
