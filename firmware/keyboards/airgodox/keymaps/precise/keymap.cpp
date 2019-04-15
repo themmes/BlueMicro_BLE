@@ -18,12 +18,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "keymap.h"
 
 #if KEYBOARD_SIDE == LEFT
-
-/*
- * initiialize the default layer (QWERTY/PRESS) with the following
- * keymap
- */
-
 //TODO: Keymap as namespace to hide these globals?
 
 //a keypress that activates upon press, but is only
@@ -31,6 +25,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 Keypress toggle { {{ {false, 1}, {false, 1} }}, 1 };
 VKey TG_SHIFT {toggle, TG(KC_LSHIFT)};
 
+/*
+ * initiialize the default layer (QWERTY/PRESS) with the following
+ * keymap
+ */
 layer_t layer0 
 {{
     {KC_ESC,    KC_Q,          KC_W,  KC_E,        KC_R,     KC_T},
@@ -52,49 +50,11 @@ matrix_t matrix = { layer0, layer1};
 void setupKeymap() { }
 
 #else
-
 /*
- * TODO: configure right side
+ * TODO Configure right side
  */
 
-std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS> matrix =
-{{
-    {KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,   KC_BSPC,},
-    {KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,KC_ENTER,},
-    {KC_N,    KC_M,    KC_COMMA,KC_DOT,  KC_SLSH,KC_RALT,},
-    {KC_RSFT, KC_SPC,  LAYER_1, KC_NO,   KC_NO,   KC_NO}
- }};
-
-
-
-void setupKeymap() 
-{
-    uint32_t layer1[MATRIX_ROWS][MATRIX_COLS] =
-        KEYMAP(
-                KC_6,    KC_7,    KC_8,    KC_9,   KC_0,    KC_MINS,
-                KC_LBRC, KC_RBRC, KC_BSLS, KC_UP,  KC_QUOT, KC_EQL,
-                KC_F11,  KC_F12,  KC_LEFT, KC_DOWN,KC_RGHT, _______,
-                KC_RSFT, KC_APP,  LAYER_0, KC_NO,  KC_NO,   KC_NO );
-
-    /*
-     * add the other layers
-     */
-    for (int row = 0; row < MATRIX_ROWS; ++row)
-    {
-        for (int col = 0; col < MATRIX_COLS; ++col)
-        {
-            matrix[row][col].addActivation(_L1, _PRESS, layer1[row][col]);
-        }
-    }
-
-    /* 
-     * add special, single activations with the 
-     * layer, activation method and activation
-     */
-    matrix[2][3].addActivation(_QWERTY, _MT_TAP, KC_Y);
-    matrix[1][1].addActivation(_QWERTY, _MT_TAP, TG(KC_LSHIFT));
-}
-
+error
 
 #endif /* KEYBOARD_SIDE */
 
