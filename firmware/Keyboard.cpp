@@ -264,15 +264,11 @@ namespace Keyboard
                 //the buffer more than once
                 momentaryBuffer.pop_back();
             }
-            else if (toggleBuffer.size() != 0)
+            else if (toggleBuffer.size() != 0 && toggle_it != toggleBuffer.rend())
             {
-                //if there are still unprocessed elements in the toggle buffer
-                if (toggle_it != toggleBuffer.rend());
-                {
-                    //add the toggle keycode into the report and iterate
-                    intoReport(toggle_it->first, toggle_it->second, i);
-                    ++toggle_it;
-                }
+                //add the toggle keycode into the report and iterate
+                intoReport(toggle_it->first, toggle_it->second, i);
+                ++toggle_it;
             }
             else if (oneshotBuffer.size() != 0)
             {

@@ -20,7 +20,6 @@ namespace Keyboard
 
     std::array<uint8_t, 8> getCurrentReport();
 
-    //bool getReport(); return value isn't used, calls layer, mod update and updates buffer
     void updateReport();
 
     bool getReportEmpty();

@@ -56,7 +56,7 @@ void setupBluetooth(void)
   //no Bluefruit.setConnInterval() function in library version 0.10.1
   //Bluefruit.setIntervalMS(9, 12);
   //
-  //
+  
 #if BLE_CENTRAL == 1
   Bluefruit.Central.setConnInterval(9,12);
 #else
@@ -79,6 +79,9 @@ void setupBluetooth(void)
 uint8_t Linkdata[7] = {0,0,0,0,0,0,0};
   // Configure Keyboard Link Service
   KBLinkService.begin();
+  
+  Bluefruit.Periph.setConnectCallback(prph_connect_callback);
+  Bluefruit.Periph.setDisconnectCallback(prph_disconnect_callback);  
   
   KBLinkChar_Layers.setProperties(CHR_PROPS_NOTIFY+ CHR_PROPS_READ);
   KBLinkChar_Layers.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
@@ -136,8 +139,6 @@ uint8_t Linkdata[7] = {0,0,0,0,0,0,0};
   KBLinkClientChar_Buffer.setNotifyCallback(notify_callback);
   KBLinkClientChar_Layer_Request.begin(); 
 
-  //Bluefruit.setConnectCallback(prph_connect_callback);
-  //Bluefruit.setDisconnectCallback(prph_disconnect_callback);  
 
   Bluefruit.Scanner.setRxCallback(scan_callback);
   Bluefruit.Scanner.restartOnDisconnect(true);
@@ -410,7 +411,7 @@ void sendKeys(uint8_t currentReport[8])
 
     //layer
     layer = currentReport[7];
-blehid.keyboardReport(mods, keycode); 
+    blehid.keyboardReport(mods, keycode); 
 #endif
 #if BLE_PERIPHERAL == 1  
     KBLinkChar_Buffer.notify(currentReport, 7);
