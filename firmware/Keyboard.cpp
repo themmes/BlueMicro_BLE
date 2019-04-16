@@ -2,9 +2,10 @@
 
 namespace Keyboard 
 {
-    //the three layers
-    //uint8_t remoteLayer = 0;
     //uint8_t localLayer = 0;
+    
+    //the current and remote layers
+    uint8_t remoteLayer = 0;
     uint8_t currentLayer = 0;
 
     //the current modifier, with each
@@ -12,13 +13,17 @@ namespace Keyboard
     uint8_t currentMod = 0;
 
     std::array<uint8_t, 8> currentReport = {0};
+    std::array<uint8_t, 8> lastReport = {0};
     
     //remote report without the layer
-    std::array<uint8_t, 7> remoteReport = {0};
+    //std::array<uint8_t, 7> remoteReport = {0};
 
+    
     bool emptyOneshot = false;
     bool layerChanged = false;
+
     bool reportEmpty = true;
+    bool reportChanged = false;
 
     unsigned long lastPressed;
 
@@ -44,7 +49,13 @@ namespace Keyboard
         //save the current layer for comparison later
         //uint8_t prevLayer = currentLayer;
 
-        if (layer > currentLayer)
+        //the actual virtual layer starts at 0 
+        //for LAYER_0, despite the HID keycode being much larger
+        layer -= LAYER_0;
+
+        //the layer only needs to be above the remote layer
+        //to become the current layer
+        if (layer > remoteLayer)
         {
             currentLayer = layer;
             layerChanged = true;
@@ -81,27 +92,6 @@ namespace Keyboard
         //which is identity for logical conjunction, 
         //therefore no change is made if there are no extra modifiers
         currentMod |= extraModifiers;
-    }
-
-    void copyRemoteReport()
-    {
-        //peripheral must be handled differently than central - otherwise,
-        //the reports will just keep bouncing from one board to the other
-#if BLE_PERIPHERAL != 1 
-
-        currentMod |= remoteReport[0];
-
-        for (auto i : remoteReport)
-        {
-            //no need to add zero keys
-            if (i != 0)
-            {
-                //construct a pair which corresponds to 
-                //an HID Keycode and no extra modifiers
-                momentaryBuffer.push_back({i, 0});
-            }
-        }
-#endif
     }
 
     void updateBuffers(uint8_t layer)
@@ -145,6 +135,8 @@ namespace Keyboard
                     {
                         oneshotBuffer.push_back(reportPair);
                     }
+
+                    //reportChanged = true;
                 }
             }
         }
@@ -189,8 +181,7 @@ namespace Keyboard
 #endif 
         {
             //key is pressed
-            //keyboard[row][col].press(currentMillis, currentLayer);
-            keyboard[row][col].press(currentMillis, 0);
+            keyboard[row][col].press(currentMillis, currentLayer);
 
             //TODO: is there a problem caused by possible changes 
             //upon clear and keyboard going into sleep mode?
@@ -199,8 +190,7 @@ namespace Keyboard
         else 
         {
             //key is not pressed
-            //keyboard[row][col].clear(currentMillis, currentLayer);
-            keyboard[row][col].clear(currentMillis, 0);
+            keyboard[row][col].clear(currentMillis, currentLayer);
         }
     }
 
@@ -211,6 +201,10 @@ namespace Keyboard
     }
 
 
+    bool getReportChanged()
+    {
+        return reportChanged;
+    }
     bool getReportEmpty()
     {
         return reportEmpty;
@@ -300,21 +294,63 @@ namespace Keyboard
         currentReport[7] = currentLayer;
     }
 
-    void updateRemoteLayer(uint8_t remoteLayer)
+    void updateRemoteLayer(uint8_t layer)
     {
         //remoteReport[7] = layer;
-        if (remoteLayer > currentLayer)
+        //
+        //save the remoteLayer for comparison against
+        //localLayer
+        remoteLayer = layer;
+
+        //the layer that is sent as remote layer should
+        //always be the correct one because the remote's
+        //currentLayer depends on the remote's remoteLayer,
+        //so basically the localLayer here
+        currentLayer = layer;
+
+        /*
+        if (remoteLayer > localLayer)
         {
             currentLayer = remoteLayer;
         }
         //remoteLayer = layer;
+        */
     }
 
+    //only called on client 
     void updateRemoteReport(std::array<uint8_t, 7> report)
     {
-        for (auto i = 0; i < remoteReport.size(); ++i)
+        currentMod |= report[0];
+
+        for (auto i = 0; i < report.size(); ++i)
         {
-            remoteReport[i] = report[i];
+            //remoteReport[i] = report[i];
+            
+            if (i != 0)
+            {
+                momentaryBuffer.push_back({i, 0});
+            }
         }
+    }
+
+    void copyRemoteReport()
+    {
+        //client must be handled differently than server - otherwise,
+        //the reports will just keep bouncing from one board to the other
+#ifdef KBLINK_CLIENT 
+
+        currentMod |= remoteReport[0];
+
+        for (auto i : remoteReport)
+        {
+            //no need to add zero keys
+            if (i != 0)
+            {
+                //construct a pair which corresponds to 
+                //an HID Keycode and no extra modifiers
+                momentaryBuffer.push_back({i, 0});
+            }
+        }
+#endif
     }
 }

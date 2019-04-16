@@ -148,7 +148,7 @@ void sendKeyPresses() {
     }
     
     //layer comms 
-#if defined(KBLINK_CLIENT) || defined(KBLINK_SERVER)
+#if defined(KBLINK_CLIENT) && defined(KBLINK_SERVER)
     if(Keyboard::getLayerChanged())                                              
     {   
         sendlayer(Keyboard::getLocalLayer());
