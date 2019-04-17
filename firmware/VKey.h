@@ -2,62 +2,79 @@
 #include "Keypress.h"
 #include <array>
 #include <utility>
+#include <memory>
 
 #ifndef VKEY
 #define VKEY
 
 #define DEBOUNCE_TIME 1 //1*10ms = 10ms debounce time by default
 
-using Activations = std::array<std::pair<Keycode, Keypress>, 3>;
+using kp_t = std::shared_ptr<Keypress>;
+using act_t = std::pair<Keycode, kp_t>;
+using activations_t = std::array<act_t, 3>;
 
 //a thin wrapper around the activations
 //the class has no notion of layers or the delta
 class VKey
 {
     private: 
-        Activations activations;
+        activations_t activations;
 
     public:
-
         VKey() : activations {{ }} {}
 
         VKey(uint32_t keycode) 
-            : activations {{ {keycode, {{ {false, DEBOUNCE_TIME} }} } }} { }
-
-        VKey(Keypress k1, uint32_t a1) 
-            : activations {{ {a1, k1} }} { }
-
-        VKey(Keypress k1, uint32_t a1, Keypress k2, uint32_t a2) 
-            : activations {{ {a1, k1}, {a2, k2} }} { }
-
-        VKey(Keypress k1, uint32_t a1, Keypress k2, uint32_t a2, Keypress k3, uint32_t a3)
+        { 
+            //initialize the default keypress:
+            //press for minimum of debounce time
+            Keypress default_kp {{ { false, DEBOUNCE_TIME } }};
+            activations = {{ {keycode, std::make_shared<Keypress>(default_kp)} }};
+        }
+      
+        //by default, keypresses are nullptrs to avoid
+        //unnecessary allocation and keycodes are 0
+        VKey(kp_type k1, uint32_t a1, 
+                kp_type k2 = nullptr, uint32_t a2 = 0, 
+                kp_type k3 = nullptr, uint32_t a3 = 0)
             : activations {{ {a1, k1}, {a2, k2}, {a3, k3} }} { }
 
         void press(unsigned long delta, bool wasPress)
         {
+            //loop through the activations, avoiding nullptrs
             for (auto& p : activations)
             {
-                p.second.press(delta, wasPress);
+                if (p.second.get() != nullptr)
+                {
+                    p.second->press(delta, wasPress);
+                }
             }
         }
 
         void clear(unsigned long delta, bool wasPress)
         {
+            //loop through the activations, avoiding nullptrs
             for (auto& p : activations)
             {
-                p.second.clear(delta, wasPress);
+                if (p.second.get() != nullptr)
+                {
+                    p.second->clear(delta, wasPress);
+                }
             }
         }
 
         Keycode getKeycode()
         {
+            //loop through the activations, avoiding nullptrs
             for (auto& p : activations)
             {
-                if (p.second.isActive())
+                if (p.second.get() != nullptr)
                 {
-                    return p.first;
-                }
-            }   
+                    if (p.second->isActive())
+                    {
+                        return p.first;
+                    }
+                }   
+            }
 
             return {};
         }
