@@ -23,6 +23,8 @@ namespace Keyboard
     void updateReport();
 
     bool getReportEmpty();
+
+    bool getReportChanged();
     bool getLayerChanged();
 
     //also resets the layer changed flag

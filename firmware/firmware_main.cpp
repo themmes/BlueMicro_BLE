@@ -114,21 +114,30 @@ void scanMatrix() {
 void sendKeyPresses() {
     //update state data - Data is in Keyboard::currentReport  
     Keyboard::updateReport(); 
-    auto report = Keyboard::getCurrentReport(); 
     
-    if (!Keyboard::getReportEmpty())  //any key presses anywhere?
+    if (Keyboard::getReportChanged())  //any key presses anywhere?
     {                                                                              
+        auto report = Keyboard::getCurrentReport().data(); 
         //send the current report
         //and first retreive the underlying c-style array from the std array
-        sendKeys(report.data());
-        isReportedReleased = false;
 
+        if (Keyboard::getReportEmpty())
+        {
+            sendRelease(report);
+        }
+        else 
+        {
+            sendKeys(report);
+        }
+
+        //isReportedReleased = false;
         LOG_LV1("MXSCAN","SEND: %i %i %i %i %i %i %i %i %i %i", millis(),
                 report[0], report[1],
                 report[2], report[3], 
                 report[4], report[5], 
                 report[6], report[7]);        
     }
+    /*
     //NO key presses anywhere
     else                                                                  
     {
@@ -146,13 +155,15 @@ void sendKeyPresses() {
 
         }
     }
+    */
     
     //layer comms 
 #if defined(KBLINK_CLIENT) && defined(KBLINK_SERVER)
     if(Keyboard::getLayerChanged())                                              
     {   
-        sendlayer(Keyboard::getLocalLayer());
-        LOG_LV1("MXSCAN","Layer %i  %i", millis(), Keyboard::getLocalLayer());
+        auto layer = Keyboard::getLocalLayer();
+        sendlayer(layer);
+        LOG_LV1("MXSCAN","Layer %i  %i", millis(), layer);
     } 
 #endif
 }

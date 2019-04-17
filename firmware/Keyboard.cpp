@@ -2,24 +2,29 @@
 
 namespace Keyboard 
 {
-    //uint8_t localLayer = 0;
-    
-    //the current and remote layers
+    /*
+     * the remote layer is the layer from another bluetooth
+     * module
+     * the current layer is the "correct" one that is being
+     * used to scan the keyboard matrix
+     * the previous layer is the last "current layer"
+     */
     uint8_t remoteLayer = 0;
     uint8_t currentLayer = 0;
+    uint8_t previousLayer = 0;
 
-    //the current modifier, with each
-    //bit representing one modifier, e.g. LSHIFT
+    /*
+     * the current and previous modifiers, with each
+     * bit representing one modifier, e.g. LSHIFT
+     */
     uint8_t currentMod = 0;
+    uint8_t previousMod = 0;
 
+    //TODO merge remote report in
+    std::array<uint8_t, 7> remoteReport = {0};
     std::array<uint8_t, 8> currentReport = {0};
-    std::array<uint8_t, 8> lastReport = {0};
+    std::array<uint8_t, 8> previousReport = {0};
     
-    //remote report without the layer
-    //std::array<uint8_t, 7> remoteReport = {0};
-
-    
-    bool emptyOneshot = false;
     bool layerChanged = false;
 
     bool reportEmpty = true;
@@ -27,7 +32,7 @@ namespace Keyboard
 
     unsigned long lastPressed;
 
-    std::vector<Keycode> buffer;
+    bool emptyOneshot = false;
 
     std::vector<std::pair<uint8_t, uint8_t>> momentaryBuffer;
     std::vector<std::pair<uint8_t, uint8_t>> toggleBuffer;
@@ -42,29 +47,20 @@ namespace Keyboard
 
     void updateLayer(uint8_t layer)
     {
-        //save the layer pressed on this physical part of the keyboard
-        //to send to the other side
-        //localLayer = layer;
-
-        //save the current layer for comparison later
-        //uint8_t prevLayer = currentLayer;
-
         //the actual virtual layer starts at 0 
         //for LAYER_0, despite the HID keycode being much larger
         layer -= LAYER_0;
 
-        //the layer only needs to be above the remote layer
-        //to become the current layer
-        if (layer > remoteLayer)
+        //the layer only needs to be above or equal to
+        //the remote layer to become the current layer
+        if (layer >= remoteLayer)
         {
             currentLayer = layer;
             layerChanged = true;
         }
-        //the current layer is the smaller of the two local and remote layers
-        //currentLayer = (layer < remoteLayer) ? remoteLayer : layer;
 
         //the layer is changed if the previous layer isn't the current, updated one
-        //layerChanged = prevLayer != currentLayer;
+        //layerChanged = previousLayer != currentLayer;
     }
 
     //add a keycode into the report at a given index and merge extra
@@ -135,8 +131,6 @@ namespace Keyboard
                     {
                         oneshotBuffer.push_back(reportPair);
                     }
-
-                    //reportChanged = true;
                 }
             }
         }
@@ -151,8 +145,9 @@ namespace Keyboard
     void setupKeyboard()
     {
         //run the user defined keymap setup
-        //for single key definitions
-        setupKeymap();
+        //for the definition of the keyboard 
+        //matrix
+        auto matrix = setupKeymap();
 
         std::array<VKey, NUM_LAYERS> vkeys;
 
@@ -163,7 +158,10 @@ namespace Keyboard
             {
                 for (std::size_t l = 0; l < NUM_LAYERS; ++l)
                 {
-                    vkeys[l] = matrix[l][i][j]; 
+                    //cast the vkey at the current matrix position
+                    //to an rvalue so the shared_ptr actually gets 
+                    //moved
+                    vkeys[l] = std::move(matrix[l][i][j]); 
                 }
 
                 keyboard[i][j] = vkeys;
@@ -197,6 +195,10 @@ namespace Keyboard
     //TODO: more efficient return?
     std::array<uint8_t, 8> getCurrentReport()
     {
+        //save the current report as the last report
+        previousReport = currentReport;
+        reportChanged = false;
+
         return currentReport;
     }
 
@@ -231,17 +233,22 @@ namespace Keyboard
         emptyOneshot = false;
         reportEmpty = false;
         
-        //reset the report along with the mods
-        resetReport();
-
-        //read the remote report into the momentary buffer
-        copyRemoteReport();
-
         //read the currently active keys into their respective buffers
         updateBuffers(currentLayer);
 
+        //reset the report along with the mods
+        resetReport();
+
+        //read the remote report into the remote report array
+        //copyRemoteReport();
+
+        //to make sure that the layer returns to 0
+        //if no layer keys are being pressed
+        updateLayer(LAYER_0);
+
         //the toggle iterator starts at the reverse begin
         auto toggle_it = toggleBuffer.rbegin();
+        auto remote_it = remoteReport.begin();
 
         for (int i = 1; i < 7; ++i)
         {
@@ -278,6 +285,14 @@ namespace Keyboard
                     oneshotBuffer.pop_back();
                 }
             }
+            /*
+            //if there is still something in the remote report
+            else if (remote_it != remoteReport.end())
+            {
+                //TODO
+                intoReport(*remote_it, 0, i);
+            }
+            */
             //if none of the buffers contain anything, break out of the for loop
             else 
             {
@@ -286,9 +301,18 @@ namespace Keyboard
                 {
                     reportEmpty = true;
                 }
-                break;
+                //break;
+            }
+
+            if (currentReport[i] != previousReport[i] || currentMod != previousMod)
+            {
+                reportChanged = true;
             }
         }
+
+        //save the current mod to detect 
+        //changes in the next iteration
+        previousMod = currentMod;
 
         currentReport[0] = currentMod;
         currentReport[7] = currentLayer;
@@ -320,16 +344,18 @@ namespace Keyboard
     //only called on client 
     void updateRemoteReport(std::array<uint8_t, 7> report)
     {
-        currentMod |= report[0];
+        //currentMod |= report[0];
 
         for (auto i = 0; i < report.size(); ++i)
         {
-            //remoteReport[i] = report[i];
+            remoteReport[i] = report[i];
             
+            /*
             if (i != 0)
             {
                 momentaryBuffer.push_back({i, 0});
             }
+            */
         }
     }
 

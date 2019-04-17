@@ -84,6 +84,8 @@ bool Keypress::extrema(unsigned long delta,
             (!press && (even == max)))
     {
         //cast to make sure comparison succeeds, unsure if this is needed
+        //check to that the previous action is the same that at the
+        //current index so as to make sure that the delta has correct meaning
         if (((delta <= static_cast<unsigned long>(current.second*10)) == max)
                 && (wasPress == even))
         {

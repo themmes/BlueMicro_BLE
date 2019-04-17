@@ -23,6 +23,7 @@ class VKey
     public:
         VKey() : activations {{ }} {}
 
+        /*
         VKey(uint32_t keycode) 
         { 
             //initialize the default keypress:
@@ -30,12 +31,21 @@ class VKey
             Keypress default_kp {{ { false, DEBOUNCE_TIME } }};
             activations = {{ {keycode, std::make_shared<Keypress>(default_kp)} }};
         }
+        */
       
+        //initialize the default keypress:
+        //press for minimum of debounce time
+        VKey(uint32_t keycode) : activations {{ { keycode, 
+            std::make_shared<Keypress>(Keypress {{ {false, DEBOUNCE_TIME} }}) } }} { }
+
+        VKey(Keypress kp, uint32_t kc) : activations {{ { kc,
+            std::make_shared<Keypress>(kp) } }} { }
+
         //by default, keypresses are nullptrs to avoid
         //unnecessary allocation and keycodes are 0
-        VKey(kp_type k1, uint32_t a1, 
-                kp_type k2 = nullptr, uint32_t a2 = 0, 
-                kp_type k3 = nullptr, uint32_t a3 = 0)
+        VKey(kp_t k1, uint32_t a1, 
+                kp_t k2 = nullptr, uint32_t a2 = 0, 
+                kp_t k3 = nullptr, uint32_t a3 = 0)
             : activations {{ {a1, k1}, {a2, k2}, {a3, k3} }} { }
 
         void press(unsigned long delta, bool wasPress)
