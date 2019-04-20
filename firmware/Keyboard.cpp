@@ -21,10 +21,21 @@ namespace Keyboard
     uint8_t previousMod = 0;
 
     //TODO merge remote report in
-    std::array<uint8_t, 7> remoteReport = {0};
+
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
     std::array<uint8_t, 8> currentReport = {0};
     std::array<uint8_t, 8> previousReport = {0};
-    
+
+    std::vector<std::pair<uint8_t, uint8_t>> momentaryBuffer;
+    std::vector<std::pair<uint8_t, uint8_t>> toggleBuffer;
+    std::vector<std::pair<uint8_t, uint8_t>> oneshotBuffer;
+
+    constexpr bool hub() { return true; }
+#else
+    std::vector<uint8_t> currentReport;
+    constexpr bool hub() { return false; }
+#endif 
+
     bool layerChanged = false;
 
     bool reportEmpty = true;
@@ -34,9 +45,6 @@ namespace Keyboard
 
     bool emptyOneshot = false;
 
-    std::vector<std::pair<uint8_t, uint8_t>> momentaryBuffer;
-    std::vector<std::pair<uint8_t, uint8_t>> toggleBuffer;
-    std::vector<std::pair<uint8_t, uint8_t>> oneshotBuffer;
 
     std::array<std::array<PKey, MATRIX_COLS>, MATRIX_ROWS> keyboard {{ }};
 
@@ -90,56 +98,69 @@ namespace Keyboard
         currentMod |= extraModifiers;
     }
 
+    void intoBuffers(Keycode&& keycode)
+    {
+        //if a non-null keycode active
+        auto reportPair = std::make_pair(keycode.getHIDKeycode(), keycode.getModifiers());
+        auto duration = keycode.getDuration();
+
+        if (reportPair.first != 0 || reportPair.second != 0)
+        {
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
+            //momentary
+            if (duration == 0)
+            {
+                momentaryBuffer.push_back(reportPair);
+            }
+            //toggle 
+            else if (duration == 1)
+            {
+                //search for the same pair of extra modifier and keycode
+                //in the toggle buffer and remove it if found
+                auto it = std::find(toggleBuffer.begin(), toggleBuffer.end(), reportPair); 
+
+                if (it != toggleBuffer.end())
+                {
+                    toggleBuffer.erase(it);
+                }
+                else 
+                {
+                    toggleBuffer.push_back(reportPair);
+                }
+            }
+            //oneshot
+            else if (duration == 2)
+            {
+                oneshotBuffer.push_back(reportPair);
+            }
+#else
+            currentReport.push_back(Keycoder::encode(keycode));
+#endif
+        }
+    }
+
     void updateBuffers(uint8_t layer)
     {
         for (int row = 0; row < MATRIX_ROWS; ++row)
         {
-            for (auto& key : keyboard[row])
+            for (auto& pkey : keyboard[row])
             {
-                //get the keycode of the current key on the current layer
-                auto keycode = key.getKeycode(layer);
-
-                //if a non-null keycode active
-                auto reportPair = std::make_pair(keycode.getHIDKeycode(), keycode.getModifiers());
-                auto duration = keycode.getDuration();
-
-                if (reportPair.first != 0 || reportPair.second != 0)
-                {
-                    //momentary
-                    if (duration == 0)
-                    {
-                        momentaryBuffer.push_back(reportPair);
-                    }
-                    //toggle 
-                    else if (duration == 1)
-                    {
-                        //search for the same pair of extra modifier and keycode
-                        //in the toggle buffer and remove it if found
-                        auto it = std::find(toggleBuffer.begin(), toggleBuffer.end(), reportPair); 
-
-                        if (it != toggleBuffer.end())
-                        {
-                            toggleBuffer.erase(it);
-                        }
-                        else 
-                        {
-                            toggleBuffer.push_back(reportPair);
-                        }
-                    }
-                    //oneshot
-                    else if (duration == 2)
-                    {
-                        oneshotBuffer.push_back(reportPair);
-                    }
-                }
+                intoBuffers(pkey.getKeycode(layer));            
             }
         }
     }
 
+
+
     void resetReport()
     {
         currentMod = 0;
+
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
         currentReport = {0};
+#else
+        currentReport.clear();
+#endif
     }
 
     void setupKeyboard()
@@ -175,24 +196,25 @@ namespace Keyboard
 #if DIODE_DIRECTION == COL2ROW
         if (currentState == 0) 
 #else
-        if (currentState == 1)
+            if (currentState == 1)
 #endif 
-        {
-            //key is pressed
-            keyboard[row][col].press(currentMillis, currentLayer);
+            {
+                //key is pressed
+                keyboard[row][col].press(currentMillis, currentLayer);
 
-            //TODO: is there a problem caused by possible changes 
-            //upon clear and keyboard going into sleep mode?
-            lastPressed = currentMillis;
-        }
-        else 
-        {
-            //key is not pressed
-            keyboard[row][col].clear(currentMillis, currentLayer);
-        }
+                //TODO: is there a problem caused by possible changes 
+                //upon clear and keyboard going into sleep mode?
+                lastPressed = currentMillis;
+            }
+            else 
+            {
+                //key is not pressed
+                keyboard[row][col].clear(currentMillis, currentLayer);
+            }
     }
 
     //TODO: more efficient return?
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
     std::array<uint8_t, 8> getCurrentReport()
     {
         //save the current report as the last report
@@ -201,6 +223,13 @@ namespace Keyboard
 
         return currentReport;
     }
+#else
+    std::vector<uint8_t> getCurrentReport()
+    {
+        reportChanged = false;
+        return currentReport; 
+    }
+#endif
 
 
     bool getReportChanged()
@@ -230,17 +259,16 @@ namespace Keyboard
 
     void updateReport()
     {
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
+        //TODO: different for each side
         emptyOneshot = false;
         reportEmpty = false;
-        
+
         //read the currently active keys into their respective buffers
         updateBuffers(currentLayer);
 
         //reset the report along with the mods
         resetReport();
-
-        //read the remote report into the remote report array
-        //copyRemoteReport();
 
         //to make sure that the layer returns to 0
         //if no layer keys are being pressed
@@ -248,11 +276,10 @@ namespace Keyboard
 
         //the toggle iterator starts at the reverse begin
         auto toggle_it = toggleBuffer.rbegin();
-        auto remote_it = remoteReport.begin();
 
         for (int i = 1; i < 7; ++i)
         {
-            
+
             if (momentaryBuffer.size() != 0)
             {
                 //get the last element of the momentary buffer
@@ -285,14 +312,7 @@ namespace Keyboard
                     oneshotBuffer.pop_back();
                 }
             }
-            /*
-            //if there is still something in the remote report
-            else if (remote_it != remoteReport.end())
-            {
-                //TODO
-                intoReport(*remote_it, 0, i);
-            }
-            */
+
             //if none of the buffers contain anything, break out of the for loop
             else 
             {
@@ -316,6 +336,10 @@ namespace Keyboard
 
         currentReport[0] = currentMod;
         currentReport[7] = currentLayer;
+#else
+        resetReport();
+        updateBuffers(currentLayer);
+#endif
     }
 
     void updateRemoteLayer(uint8_t layer)
@@ -333,37 +357,30 @@ namespace Keyboard
         currentLayer = layer;
 
         /*
-        if (remoteLayer > localLayer)
-        {
-            currentLayer = remoteLayer;
-        }
+           if (remoteLayer > localLayer)
+           {
+           currentLayer = remoteLayer;
+           }
         //remoteLayer = layer;
         */
     }
 
+#if KEYBOARD_MODE == HUB
     //only called on client 
-    void updateRemoteReport(std::array<uint8_t, 7> report)
+    void updateRemoteReport(std::vector<uint8_t> report)
     {
-        //currentMod |= report[0];
 
         for (auto i = 0; i < report.size(); ++i)
         {
-            remoteReport[i] = report[i];
-            
-            /*
-            if (i != 0)
-            {
-                momentaryBuffer.push_back({i, 0});
-            }
-            */
+            intoBuffers(Keycoder::decode(report[i]));
         }
     }
 
+    /*
     void copyRemoteReport()
     {
         //client must be handled differently than server - otherwise,
         //the reports will just keep bouncing from one board to the other
-#ifdef KBLINK_CLIENT 
 
         currentMod |= remoteReport[0];
 
@@ -377,6 +394,7 @@ namespace Keyboard
                 momentaryBuffer.push_back({i, 0});
             }
         }
-#endif
     }
+    */
+#endif
 }

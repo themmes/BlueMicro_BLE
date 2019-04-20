@@ -163,18 +163,20 @@ Bluefruit.Periph.setConnInterval(9,12);
      * min = 9*1.25=11.25 ms, max = 12*1.25= 15 ms 
      */
 
-#ifdef KBLINK_CLIENT
+#if KEYBOARD_MODE == HUB 
+    //forward declare these callback functions
+    void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len);
+    void scan_callback(ble_gap_evt_adv_report_t* report);
+    void cent_connect_callback(uint16_t conn_handle);
+    void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason);
+
     KBLinkClientService.begin();
     KBLinkClientChar_Layers.begin();
     KBLinkClientChar_Layers.setNotifyCallback(notify_callback);
     KBLinkClientChar_Buffer.begin();
     KBLinkClientChar_Buffer.setNotifyCallback(notify_callback);
     KBLinkClientChar_Layer_Request.begin(); 
-#endif
-    //Bluefruit.Periph.setConnectCallback(prph_connect_callback);
-    //Bluefruit.Periph.setDisconnectCallback(prph_disconnect_callback);  
 
-#if BLE_CENTRAL_COUNT != 0 
     Bluefruit.Scanner.setRxCallback(scan_callback);
     Bluefruit.Scanner.restartOnDisconnect(true);
     Bluefruit.Scanner.filterRssi(-80);                                              // limits very far away devices - reduces load
@@ -239,7 +241,8 @@ void startAdv(void)
 /**************************************************************************************************************************/
 // This callback is called when a Notification update even occurs (This occurs on the client)
 /**************************************************************************************************************************/
-#if BLE_CENTRAL_COUNT != 0 && defined(KBLINK_CLIENT)
+//#if ((BLE_CENTRAL_COUNT != 0) && defined(KBLINK_CLIENT))
+#if KEYBOARD_MODE == HUB
 void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
 {
     LOG_LV1("CB NOT","notify_callback: Length %i data[0] %i" ,len, data[0]);
@@ -247,13 +250,14 @@ void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
     {
         if (chr->uuid == KBLinkClientChar_Layers.uuid){
             LOG_LV1("CB NOT","notify_callback: Layers Data");
-            Keyboard::updateRemoteLayer(data[0]);  // Layer is only a single uint8
+            //Layer is only a single uint8, dereference the pointer
+            //to get the layer information
+            Keyboard::updateRemoteLayer(*data); 
         }
 
         if (chr->uuid == KBLinkClientChar_Buffer.uuid){
             LOG_LV1("CB NOT","notify_callback: Buffer Data");
-            Keyboard::updateRemoteReport( {data[0], data[1], data[2], data[3],
-                    data[4], data[5], data[6]} );
+            Keyboard::updateRemoteReport({data, data + len});
         }
     }
 }
@@ -306,10 +310,13 @@ void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason)
     (void) reason;
     LOG_LV1("CENTRL","Disconnected"  );
     // if the half disconnects, we need to make sure that the received buffer is set to empty.
-    Keyboard::updateRemoteLayer(0);  // Layer is only a single uint8
-    Keyboard::updateRemoteReport( {0, 0, 0, 0, 0, 0, 0} );
+    // Layer is only a single uint8 
+    Keyboard::updateRemoteLayer(0); 
+
+    Keyboard::updateRemoteReport({ });
 }
-#endif /* BLE_CENTRAL_COUNT != 0 || defined(KBLINK_CLIENT) */
+//#endif /* BLE_CENTRAL_COUNT != 0 || defined(KBLINK_CLIENT) */
+#endif /* HUB */
 
 /**************************************************************************************************************************/
 // This callback is called when a Notification subscription event occurs (This occurs on the server)
@@ -433,10 +440,11 @@ void sendlayer(uint8_t layer)
 #endif
 }
 /**************************************************************************************************************************/
-void sendKeys(uint8_t currentReport[8])
+void sendKeys(uint8_t currentReport[], int length)
 {
 
 #if BLE_HID_COUNT != 0  
+#pragma GCC message "Compiling send keys in bluetooth"
     uint8_t keycode[6];
     uint8_t layer = 0;
     uint8_t mods = 0;
@@ -460,7 +468,7 @@ void sendKeys(uint8_t currentReport[8])
 #endif
 
 #ifdef KBLINK_SERVER
-    KBLinkChar_Buffer.notify(currentReport, 7);
+    KBLinkChar_Buffer.notify(currentReport, length);
 #endif
 
 #if BLE_CENTRAL_COUNT != 0
@@ -468,7 +476,7 @@ void sendKeys(uint8_t currentReport[8])
 #endif 
 }
 /**************************************************************************************************************************/
-void sendRelease(uint8_t currentReport[8])
+void sendRelease()
 {
 #if BLE_HID_COUNT != 0
     blehid.keyRelease(hid_conn_hdl);                                             // HID uses the standard blehid service
@@ -477,7 +485,7 @@ void sendRelease(uint8_t currentReport[8])
     //#if BLE_PERIPHERAL_COUNT != 0 && BLE_HID == 0 
 #ifdef KBLINK_SERVER
     //Peripheral->central uses the subscribe/notify mechanism
-    KBLinkChar_Buffer.notify(currentReport, 7);                       
+    KBLinkChar_Buffer.notify({}, 0);                       
 #endif
     //Only send layer to slaves
     //Central does not need to send the buffer to the Peripheral.

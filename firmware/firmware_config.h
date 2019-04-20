@@ -21,6 +21,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef FIRMWARE_CONFIG_H
 #define FIRMWARE_CONFIG_H
 
+#define HUB 0
+#define SPOKE 1
+#define SINGLE 2
+
 #include "avr_mapping.h"
 #include "keyboard_config.h"
 
@@ -30,7 +34,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define SEND_KEYS 1
 
 //default values for the LEFT side of the keyboard
-#if KEYBOARD_SIDE == LEFT
+#if KEYBOARD_MODE == HUB
 #define BLE_PERIPHERAL_COUNT 1
 #define BLE_HID_COUNT 1
 #define BLE_CENTRAL_COUNT 1
@@ -38,7 +42,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define KBLINK_CLIENT 
 
 //default values for the RIGHT side of the keyboard
-#elif KEYBOARD_SIDE == RIGHT
+#elif KEYBOARD_MODE == SPOKE
 #define BLE_PERIPHERAL_COUNT 1
 #define BLE_HID_COUNT 0
 #define BLE_CENTRAL_COUNT 0
@@ -46,14 +50,14 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define KBLINK_SERVER
 
 //default values for a SINGLE keyboard (a non-split keyboard)
-#elif KEYBOARD_SIDE == SINGLE
+#elif KEYBOARD_MODE == SINGLE
 #define BLE_PERIPHERAL_COUNT 1
 #define BLE_HID_COUNT 1
 #define BLE_CENTRAL_COUNT 0
 #define DEVICE_NAME DEVICE_NAME_S
 
 //default values for a TEST keyboard (might be nonsensical)
-#elif KEYBOARD_SIDE == TEST
+#elif KEYBOARD_MODE == TEST
 #define BLE_CENTRAL_COUNT 0
 #define BLE_PERIPHERAL_COUNT 0 
 #define BLE_HID_COUNT 1 

@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <tuple>
 
 #ifndef KEYCODE
 #define KEYCODE
@@ -32,6 +33,28 @@ class Keycode
         uint8_t getDuration()
         {
             return duration;
+        }
+
+        //allows for implicit conversion to a 
+        //uint32_t 
+        operator uint32_t() const 
+        {
+            return (static_cast<uint32_t>(hid_keycode) 
+                    | (static_cast<uint32_t>(modifiers) << 8)
+                    | (static_cast<uint32_t>(duration) << 16));
+        }
+
+
+        friend bool operator<(const Keycode& l, const Keycode& r)
+        {
+            return std::tie(l.hid_keycode, l.modifiers, l.duration) <
+                std::tie(r.hid_keycode, r.modifiers, r.duration);
+        }
+
+        friend bool operator==(const Keycode& l, const Keycode& r)
+        {
+            return std::tie(l.hid_keycode, l.modifiers, l.duration) == 
+                std::tie(r.hid_keycode, r.modifiers, r.duration);
         }
 };
 

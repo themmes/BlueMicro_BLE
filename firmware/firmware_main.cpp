@@ -112,53 +112,42 @@ void scanMatrix() {
 // Communication with computer and other boards
 /**************************************************************************************************************************/
 void sendKeyPresses() {
+#pragma GCC message "Compiling key sending in firmware"
     //update state data - Data is in Keyboard::currentReport  
     Keyboard::updateReport(); 
     
     if (Keyboard::getReportChanged())  //any key presses anywhere?
     {                                                                              
-        auto report = Keyboard::getCurrentReport().data(); 
-        //send the current report
-        //and first retreive the underlying c-style array from the std array
+        //get the current report from the keyboard
+        auto currentReport = Keyboard::getCurrentReport(); 
+
+        //convert the current report into a c-style array
+        //and retreive it's length (constant if the keyboard
+        //has HID, but variable is it doesn't)
+        auto report = currentReport.data();
+        auto length = currentReport.size();
 
         if (Keyboard::getReportEmpty())
         {
-            sendRelease(report);
+            sendRelease();
         }
         else 
         {
-            sendKeys(report);
+            sendKeys(report, length);
         }
 
         //isReportedReleased = false;
+        /*
         LOG_LV1("MXSCAN","SEND: %i %i %i %i %i %i %i %i %i %i", millis(),
                 report[0], report[1],
                 report[2], report[3], 
                 report[4], report[5], 
                 report[6], report[7]);        
+                */
     }
-    /*
-    //NO key presses anywhere
-    else                                                                  
-    {
-        if (!isReportedReleased){
-            sendRelease(report.data());  
-            
-            // Update flag so that we don't re-issue the message if we don't need to.
-            isReportedReleased = true;                                         
-
-            LOG_LV1("MXSCAN","RELEASED: %i %i %i %i %i %i %i %i %i %i", millis(),
-                    report[0], report[1],
-                    report[2], report[3], 
-                    report[4], report[5], 
-                    report[6], report[7]);        
-
-        }
-    }
-    */
     
     //layer comms 
-#if defined(KBLINK_CLIENT) && defined(KBLINK_SERVER)
+#if defined(KBLINK_CLIENT) || defined(KBLINK_SERVER)
     if(Keyboard::getLayerChanged())                                              
     {   
         auto layer = Keyboard::getLocalLayer();
