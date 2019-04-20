@@ -17,42 +17,50 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "keymap.h"
 
-#if KEYBOARD_SIDE == SINGLE
-//TODO: Keymap as namespace to hide these globals?
-
-//a keypress that activates upon press, but is only
-//reset when it is released
-Keypress toggle { {{ {false, 1}, {false, 1} }}, 1 };
-Keypress hold { {{ {false, 20} }} };
-
-VKey TG_SHIFT {toggle, TG(KC_LSHIFT)};
-VKey TG_L1 {toggle, TG(LAYER_1)};
-VKey OS_SHIFT {OS(KC_LSHIFT)}
-VKey HOLD_W {hold, KC_W};
-
+#if KEYBOARD_MODE == SINGLE
 /*
- * initiialize the default layer (QWERTY/PRESS) with the following
- * keymap
+ * everything that concerns the layout of the keyboard
+ * should go into this function
  */
-layer_t layer0 
-{{
-    {KC_ESC,    OS_SHIFT,          HOLD_W,  KC_E,    KC_R,     KC_T},
-        {KC_TAB,    KC_NO,    KC_S,  KC_CAP_D, KC_F,     KC_G},
-        {KC_LSHIFT, TG_SHIFT, KC_X,  KC_C,     KC_V,     KC_B},
-        {KC_NO,     KC_NO,    KC_NO, TG_1,     KC_E,  KC_LGUI}
- }};
+matrix_t setupKeymap() 
+{ 
+    //two commonly used activation methods
+    //TODO move out into defaults
+    Keypress hold { {{ {false, 100} }} };
+    Keypress toggle { {{ {false, 1}, {false, 1} }}, 1 };
 
-layer_t layer1 
-{{
-    {KC_GRV,    KC_1,    KC_2,     KC_3,    KC_4,     KC_5},
-        {KC_CAPS,   KC_F1,   KC_F2,    KC_F3,   KC_F4,    KC_F5}, 
-        {KC_LSHIFT, KC_F6,   KC_F7,    KC_F8,   KC_F9,    KC_F10}, 
-        {KC_NO,     KC_NO,   KC_NO,    TG_L1,   KC_E,     KC_LGUI}
- }};
+    VKey TG_SHIFT {toggle, TG(KC_LSHIFT)};
 
-matrix_t matrix = { layer0, layer1};
+    //all of these keys share the same toggling keypress
+    //so that they work seamlessly across layers
+    VKey TG_L1 {toggle, TG(LAYER_1)};
 
-void setupKeymap() { }
+    VKey OS_SHIFT {OS(KC_LSHIFT)};
+    VKey HOLD_W {hold, KC_W};
+
+    /*
+     * initiialize the default layer (QWERTY/PRESS) with the following
+     * keymap
+     */
+    layer_t layer0 
+    {{
+         {KC_ESC,    OS_SHIFT,          HOLD_W,  KC_E,    KC_R,     KC_T},
+             {KC_TAB,    KC_NO,    KC_S,  KC_CAP_D, KC_F,     KC_G},
+             {KC_LSHIFT, TG_SHIFT, KC_X,  KC_C,     KC_V,     KC_B},
+             {KC_NO,     KC_NO,    KC_NO, TG_L1,     KC_E,  KC_LGUI}
+     }};
+
+    layer_t layer1 
+    {{
+         {KC_GRV,    KC_1,    KC_2,     KC_3,    KC_4,     KC_5},
+             {KC_CAPS,   KC_F1,   KC_F2,    KC_F3,   KC_F4,    KC_F5}, 
+             {KC_LSHIFT, KC_F6,   KC_F7,    KC_F8,   KC_F9,    KC_F10}, 
+             {KC_NO,     KC_NO,   KC_NO,    TG_L1,   KC_E,     KC_LGUI}
+     }};
+
+    //return an array of the two layers
+    return {{ layer0, layer1 }};
+}
 
 #else
 /*
@@ -62,4 +70,3 @@ void setupKeymap() { }
 error
 
 #endif /* KEYBOARD_SIDE */
-

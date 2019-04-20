@@ -22,7 +22,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define KEYBOARD_CONFIG_H
 #include "avr_mapping.h"
 
-#define KEYBOARD_SIDE SINGLE
+#define KEYBOARD_MODE SINGLE
 // CHANGE THIS FOR THE KEYBOARD TO MATCH WHAT IS BEING FLASHED. OPTIONS: LEFT  RIGHT  MASTER
 
 #define DEVICE_NAME_R                         "Airgodox_R"                          /**< Name of device. Will be included in the advertising data. */
