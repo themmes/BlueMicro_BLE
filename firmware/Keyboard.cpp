@@ -78,16 +78,31 @@ namespace Keyboard
         //for LAYER_0, despite the HID keycode being much larger
         layer -= LAYER_0;
 
-        //the layer only needs to be above or equal to
-        //the remote layer to become the current layer
-        if (layer >= remoteLayer)
+        //the layer must be larger than the remote layer to override as
+        //well as larger than the current layer, because the largest
+        //layer should always be used
+        if (layer > remoteLayer && layer > currentLayer)
         {
             currentLayer = layer;
-            layerChanged = true;
+            
+            //the layer is changed if the previous layer 
+            //isn't the current, updated one
+            layerChanged = previousLayer != currentLayer;
         }
+    }
 
-        //the layer is changed if the previous layer isn't the current, updated one
-        //layerChanged = previousLayer != currentLayer;
+    //reset the layer to make sure it bounces 
+    //back to zero whenever needed
+    void resetLayer()
+    {
+        if (remoteLayer == 0)
+        {
+            currentLayer = 0;
+
+            //resetting changes the layer if the previous layer
+            //was larger, this can be overridden by 
+            layerChanged = previousLayer != 0;
+        }
     }
 
     //add a keycode into the report at a given index and merge extra
@@ -283,6 +298,10 @@ namespace Keyboard
         emptyOneshot = false;
         reportEmpty = false;
 
+        //save the previous layer to be able 
+        //to recognize potential layer changes
+        previousLayer = currentLayer;
+
         //read the currently active keys into their respective buffers
         updateBuffers(currentLayer);
 
@@ -291,7 +310,7 @@ namespace Keyboard
 
         //to make sure that the layer returns to 0
         //if no layer keys are being pressed
-        updateLayer(LAYER_0);
+        resetLayer();
 
         //the toggle iterator starts at the reverse begin
         auto toggle_it = toggleBuffer.rbegin();
@@ -363,8 +382,6 @@ namespace Keyboard
 
     void updateRemoteLayer(uint8_t layer)
     {
-        //remoteReport[7] = layer;
-        //
         //save the remoteLayer for comparison against
         //localLayer
         remoteLayer = layer;
@@ -374,46 +391,18 @@ namespace Keyboard
         //currentLayer depends on the remote's remoteLayer,
         //so basically the localLayer here
         currentLayer = layer;
-
-        /*
-           if (remoteLayer > localLayer)
-           {
-           currentLayer = remoteLayer;
-           }
-        //remoteLayer = layer;
-        */
     }
 
 #if KEYBOARD_MODE == HUB
     //only called on client 
     void updateRemoteReport(std::vector<uint8_t> report)
     {
-
         for (auto i = 0; i < report.size(); ++i)
         {
+            //decode the uint8_t into a keycode and add
+            //it to the correct buffer
             intoBuffers(Keycoder::decode(report[i]));
         }
     }
-
-    /*
-    void copyRemoteReport()
-    {
-        //client must be handled differently than server - otherwise,
-        //the reports will just keep bouncing from one board to the other
-
-        currentMod |= remoteReport[0];
-
-        for (auto i : remoteReport)
-        {
-            //no need to add zero keys
-            if (i != 0)
-            {
-                //construct a pair which corresponds to 
-                //an HID Keycode and no extra modifiers
-                momentaryBuffer.push_back({i, 0});
-            }
-        }
-    }
-    */
 #endif
 }
