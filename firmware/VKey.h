@@ -108,21 +108,6 @@ class VKey
 
             return {};
         }
-
-        std::set<Keycode> getKeycodes() const
-        {
-            std::set<Keycode> ret; 
-
-            for (const auto& p : activations)
-            {
-                if (p.second.get() != nullptr)
-                {
-                    ret.insert(p.first);
-                }   
-            }
-
-            return ret;
-        }
 };
 
 #endif

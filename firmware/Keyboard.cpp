@@ -42,6 +42,7 @@ namespace Keyboard
     //TODO merge remote report in
 
 #if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
+#pragma message "compiling hid report in keyboard"
     std::array<uint8_t, 8> currentReport = {0};
     std::array<uint8_t, 8> previousReport = {0};
 
@@ -168,7 +169,7 @@ namespace Keyboard
                 oneshotBuffer.push_back(reportPair);
             }
 #else
-            currentReport.push_back(Keycoder::encode(keycode));
+            currentReport.push_back(keycode.encode());
 #endif
         }
     }
@@ -397,11 +398,11 @@ namespace Keyboard
     //only called on client 
     void updateRemoteReport(std::vector<uint8_t> report)
     {
-        for (auto i = 0; i < report.size(); ++i)
+        for (auto& code : report)
         {
             //decode the uint8_t into a keycode and add
             //it to the correct buffer
-            intoBuffers(Keycoder::decode(report[i]));
+            intoBuffers(Keycode::decode(code));
         }
     }
 #endif

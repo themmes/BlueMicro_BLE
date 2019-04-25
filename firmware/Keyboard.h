@@ -20,7 +20,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "keymap.h"
 #include "PKey.h"
 #include "VKey.h"
-#include "Keycoder.h"
 
 #include <algorithm>
 #include <cstdint>
