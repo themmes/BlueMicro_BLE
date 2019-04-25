@@ -112,7 +112,7 @@ void scanMatrix() {
 // Communication with computer and other boards
 /**************************************************************************************************************************/
 void sendKeyPresses() {
-#pragma GCC message "Compiling key sending in firmware"
+#pragma message "Compiling key sending in firmware"
     //update state data - Data is in Keyboard::currentReport  
     Keyboard::updateReport(); 
     
@@ -151,7 +151,7 @@ void sendKeyPresses() {
     if(Keyboard::getLayerChanged())                                              
     {   
         auto layer = Keyboard::getLocalLayer();
-        sendlayer(layer);
+        sendLayer(layer);
         LOG_LV1("MXSCAN","Layer %i  %i", millis(), layer);
     } 
 #endif

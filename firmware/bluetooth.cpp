@@ -77,18 +77,8 @@ void setupBluetooth(void)
     // helps troubleshooting...
     Bluefruit.configServiceChanged(true);
 
-    /*
-    //no Bluefruit.setConnInterval() function in library version 0.10.1
-    //Bluefruit.setIntervalMS(9, 12);
-    //
-
-#if BLE_CENTRAL_COUNT == 1
-Bluefruit.Central.setConnInterval(9,12);
-#else
-Bluefruit.Periph.setConnInterval(9,12);
-#endif
-*/
-    //********Bluefruit.setConnInterval(9, 12);                                 // 0.10.1: not needed for master...
+    // 0.10.1: not needed for master...
+    //Bluefruit.setConnInterval(9, 12);                                 
 
     // Configure and Start Device Information Service
     bledis.setManufacturer(MANUFACTURER_NAME);                                  // Defined in keyboard_config.h
@@ -108,8 +98,9 @@ Bluefruit.Periph.setConnInterval(9,12);
 #endif
 
 #ifdef KBLINK_SERVER
-    uint8_t Linkdata[7] = {0,0,0,0,0,0,0};
-    // Configure Keyboard Link Service
+    //uint8_t linkdata[7] = {0,0,0,0,0,0,0};
+    
+    //Configure Keyboard Link Service
     KBLinkService.begin();
 
     KBLinkChar_Layers.setProperties(CHR_PROPS_NOTIFY+ CHR_PROPS_READ);
@@ -139,7 +130,8 @@ Bluefruit.Periph.setConnInterval(9,12);
     KBLinkChar_Buffer.setUserDescriptor("Keyboard HID Buffer");
     KBLinkChar_Buffer.setCccdWriteCallback(cccd_callback,true);     /// 0.10.1 - second parameter is the "use adafruit calback" to call adafruit's method before ours.  Not sure what it does.
     KBLinkChar_Buffer.begin();
-    KBLinkChar_Buffer.write(Linkdata, 7);  // initialize with empty buffer
+    //initialize with empty buffer 
+    KBLinkChar_Buffer.write(nullptr, 0); 
 #endif
 
     /* Start BLE HID
@@ -315,7 +307,6 @@ void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason)
 
     Keyboard::updateRemoteReport({ });
 }
-//#endif /* BLE_CENTRAL_COUNT != 0 || defined(KBLINK_CLIENT) */
 #endif /* HUB */
 
 /**************************************************************************************************************************/
@@ -423,8 +414,10 @@ void set_keyboard_led(uint16_t conn_handle, uint8_t led_bitmap)
         ledOff( LED_RED );
     }
 }
-/**************************************************************************************************************************/
-void sendlayer(uint8_t layer)
+/***********************************************/
+/* layers are only sent if any kblink role is enabled */
+#if defined(KBLINK_SERVER) || defined(KBLINK_CLIENT)
+void sendLayer(uint8_t layer)
 {
     // Note that HID standard only has a buffer of 6 keys (plus modifiers)
     //#if BLE_PERIPHERAL_COUNT !=0  
@@ -439,12 +432,13 @@ void sendlayer(uint8_t layer)
     }
 #endif
 }
+#endif 
 /**************************************************************************************************************************/
 void sendKeys(uint8_t currentReport[], int length)
 {
 
 #if BLE_HID_COUNT != 0  
-#pragma GCC message "Compiling send keys in bluetooth"
+#pragma message "Compiling hid send keys in bluetooth"
     uint8_t keycode[6];
     uint8_t layer = 0;
     uint8_t mods = 0;
@@ -470,10 +464,6 @@ void sendKeys(uint8_t currentReport[], int length)
 #ifdef KBLINK_SERVER
     KBLinkChar_Buffer.notify(currentReport, length);
 #endif
-
-#if BLE_CENTRAL_COUNT != 0
-    // Only send layer to slaves - send nothing here
-#endif 
 }
 /**************************************************************************************************************************/
 void sendRelease()
@@ -484,8 +474,12 @@ void sendRelease()
 #endif
     //#if BLE_PERIPHERAL_COUNT != 0 && BLE_HID == 0 
 #ifdef KBLINK_SERVER
-    //Peripheral->central uses the subscribe/notify mechanism
-    KBLinkChar_Buffer.notify({}, 0);                       
+    //spoke->hub uses the subscribe/notify mechanism
+    //release corresponds to no data, so 
+    //send a nullptr and zero length, nullptr shouldn't result 
+    //in any issues, as only messages with lengths 
+    //of more than 0 are processed
+    KBLinkChar_Buffer.notify(nullptr, 0);                       
 #endif
     //Only send layer to slaves
     //Central does not need to send the buffer to the Peripheral.

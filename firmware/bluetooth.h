@@ -35,8 +35,8 @@ void set_keyboard_led(uint16_t conn_handle, uint8_t led_bitmap);
 void sendKeys(uint8_t currentReport[], int length);
 void sendRelease();
 
-#if defined(KBLINK_CLIENT) || defined (KBLINK_CLIENT)
-void sendlayer(uint8_t layer);
+#if defined(KBLINK_SERVER) || defined(KBLINK_CLIENT)
+void sendLayer(uint8_t layer);
 #endif
 
 #if BLE_PERIPHERAL_COUNT != 0
