@@ -148,6 +148,7 @@ void sendKeyPresses() {
     
     //layer comms 
 #if defined(KBLINK_CLIENT) || defined(KBLINK_SERVER)
+#pragma message "Compiling layer comms in firmware"
     if(Keyboard::getLayerChanged())                                              
     {   
         auto layer = Keyboard::getLocalLayer();
@@ -170,6 +171,7 @@ void loop() {
 #endif
 
 #if BLE_CENTRAL_COUNT != 0  
+#pragma message "Compiling keep scanning in firmware"
     if ((timesincelastkeypress < 10)
             && !Bluefruit.Central.connected()
             && !Bluefruit.Scanner.isRunning())

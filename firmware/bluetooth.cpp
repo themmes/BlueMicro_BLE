@@ -22,9 +22,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 // Device Information Service
 BLEDis bledis;  
 
-//This is usually on the MASTER/CENTRAL board
+//This is usually on HUB/SPOKE 
 #if BLE_HID_COUNT != 0
 //The handle for the HID connection
+//TODO if we want multiple hid connections, then there need
+//to be more connection handler
 uint16_t hid_conn_hdl;
 
 //The HID Service;
@@ -35,8 +37,7 @@ BLEHidAdafruit blehid;
 extern BLEBas blebas; 
 #endif
 
-// PERIPHERAL IS USUALLY THE SLAVE BOARD
-//#if BLE_PERIPHERAL_COUNT != 0                                                         
+//SPOKE is the kblink server 
 #ifdef KBLINK_SERVER
 
 // Keyboard Link Service - Slave/Server Side
@@ -46,13 +47,10 @@ BLECharacteristic KBLinkChar_Layer_Request = BLECharacteristic(UUID128_CHR_KEYBO
 BLECharacteristic KBLinkChar_Buffer        = BLECharacteristic(UUID128_CHR_KEYBOARD_BUFFER); 
 #endif
 
-// ToDo: provision for multiple master/slave links
+// TODO: provision for multiple master/slave links
 //
-// CENTRAL IS THE MASTER BOARD                                                                
-//#if BLE_CENTRAL_COUNT != 0
-//
+//HUB is the kblink client
 #ifdef KBLINK_CLIENT
-//Keyboard Link Service Client - Master/Client Side  
 BLEClientService KBLinkClientService = BLEClientService(UUID128_SVC_KEYBOARD_LINK);     
 BLEClientCharacteristic KBLinkClientChar_Layers        = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_LAYERS);
 BLEClientCharacteristic KBLinkClientChar_Layer_Request = BLEClientCharacteristic(UUID128_CHR_KEYBOARD_LAYER_REQUEST);
@@ -92,6 +90,7 @@ void setupBluetooth(void)
     readVBAT(); // Get a single ADC sample and throw it away
 #endif
 
+//peripheral should always be on
 #if BLE_PERIPHERAL_COUNT != 0
     Bluefruit.Periph.setConnectCallback(prph_connect_callback);
     Bluefruit.Periph.setDisconnectCallback(prph_disconnect_callback);  
@@ -156,6 +155,7 @@ void setupBluetooth(void)
      */
 
 #if KEYBOARD_MODE == HUB 
+#pragma message "compiling callbacks and scanner in bluetooth"
     //forward declare these callback functions
     void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len);
     void scan_callback(ble_gap_evt_adv_report_t* report);
@@ -385,7 +385,7 @@ void prph_disconnect_callback(uint16_t conn_handle, uint8_t reason)
     LOG_LV1("PRPH", "Disconnected");
 
     // if HID then save connection handle to HID_connection handle
-#if BLE_HID_COUNT == 1
+#if BLE_HID_COUNT != 0
     hid_conn_hdl = 0;
 #endif
 }
@@ -417,11 +417,12 @@ void set_keyboard_led(uint16_t conn_handle, uint8_t led_bitmap)
 /***********************************************/
 /* layers are only sent if any kblink role is enabled */
 #if defined(KBLINK_SERVER) || defined(KBLINK_CLIENT)
+#pragma message "compiling layer comms in bluetooth"
 void sendLayer(uint8_t layer)
 {
     // Note that HID standard only has a buffer of 6 keys (plus modifiers)
     //#if BLE_PERIPHERAL_COUNT !=0  
-#ifdef KBLINK_SERVER
+#if defined(KBLINK_SERVER)
     //Peripheral->central uses the subscribe/notify mechanism
     KBLinkChar_Layers.notify8(layer);                   
 #elif defined(KBLINK_CLIENT)
@@ -456,7 +457,7 @@ void sendKeys(uint8_t currentReport[], int length)
 
     //layer
     layer = currentReport[7];
-    blehid.keyboardReport(mods, keycode); 
+    blehid.keyboardReport(hid_conn_hdl, mods, keycode); 
 
     LOG_LV2("HID","Sending blehid.keyboardReport " );
 #endif
@@ -472,9 +473,9 @@ void sendRelease()
     blehid.keyRelease(hid_conn_hdl);                                             // HID uses the standard blehid service
     LOG_LV2("HID","Sending blehid.keyRelease " );
 #endif
-    //#if BLE_PERIPHERAL_COUNT != 0 && BLE_HID == 0 
+
 #ifdef KBLINK_SERVER
-    //spoke->hub uses the subscribe/notify mechanism
+    //SPOKE -> HUB uses the subscribe/notify mechanism
     //release corresponds to no data, so 
     //send a nullptr and zero length, nullptr shouldn't result 
     //in any issues, as only messages with lengths 
