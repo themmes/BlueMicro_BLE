@@ -137,6 +137,7 @@ void sendKeyPresses() {
         }
 
         //isReportedReleased = false;
+        
         /*
         LOG_LV1("MXSCAN","SEND: %i %i %i %i %i %i %i %i %i %i", millis(),
                 report[0], report[1],
@@ -144,6 +145,7 @@ void sendKeyPresses() {
                 report[4], report[5], 
                 report[6], report[7]);        
                 */
+                
     }
     
     //layer comms 

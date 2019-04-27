@@ -125,10 +125,13 @@ void setupBluetooth(void)
 
     KBLinkChar_Buffer.setProperties(CHR_PROPS_NOTIFY+ CHR_PROPS_READ);
     KBLinkChar_Buffer.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
-    KBLinkChar_Buffer.setFixedLen(7);
+    //Shouldn't set fixed length - the server sends a variable 
+    //length, encoded message 
+    //KBLinkChar_Buffer.setFixedLen(7);
     KBLinkChar_Buffer.setUserDescriptor("Keyboard HID Buffer");
     KBLinkChar_Buffer.setCccdWriteCallback(cccd_callback,true);     /// 0.10.1 - second parameter is the "use adafruit calback" to call adafruit's method before ours.  Not sure what it does.
     KBLinkChar_Buffer.begin();
+    
     //initialize with empty buffer 
     KBLinkChar_Buffer.write(nullptr, 0); 
 #endif
@@ -233,7 +236,6 @@ void startAdv(void)
 /**************************************************************************************************************************/
 // This callback is called when a Notification update even occurs (This occurs on the client)
 /**************************************************************************************************************************/
-//#if ((BLE_CENTRAL_COUNT != 0) && defined(KBLINK_CLIENT))
 #if KEYBOARD_MODE == HUB
 void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
 {
@@ -249,7 +251,9 @@ void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
 
         if (chr->uuid == KBLinkClientChar_Buffer.uuid){
             LOG_LV1("CB NOT","notify_callback: Buffer Data");
-            Keyboard::updateRemoteReport({data, data + len});
+            std::vector<uint8_t> v { };
+            v.assign(data, data+len);
+            Keyboard::updateRemoteReport(v);
         }
     }
 }
@@ -315,7 +319,7 @@ void cent_disconnect_callback(uint16_t conn_handle, uint8_t reason)
 #ifdef KBLINK_SERVER
 void cccd_callback(uint16_t conn_hdl, BLECharacteristic* chr, uint16_t cccd_value)    
 {
-    LOG_LV1("CBCCCD","notify_callback: %i " ,cccd_value);
+    LOG_LV1("CBCCCD","cccd_callback: %i " ,cccd_value);
 
     // Check the characteristic this CCCD update is associated with in case
     // this handler is used for multiple CCCD records.
@@ -435,7 +439,7 @@ void sendLayer(uint8_t layer)
 }
 #endif 
 /**************************************************************************************************************************/
-void sendKeys(uint8_t currentReport[], int length)
+void sendKeys(uint8_t* currentReport, int length)
 {
 
 #if BLE_HID_COUNT != 0  
