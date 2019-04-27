@@ -19,6 +19,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "Keyboard.h"
 
+using buffer_t = std::vector<std::pair<uint8_t, uint8_t>>;
+
 namespace Keyboard 
 {
     /*
@@ -32,28 +34,27 @@ namespace Keyboard
     uint8_t currentLayer = 0;
     uint8_t previousLayer = 0;
 
-    /*
+    //TODO merge remote report in
+
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
+#pragma message "compiling hid report in keyboard"
+    /* 
      * the current and previous modifiers, with each
      * bit representing one modifier, e.g. LSHIFT
      */
     uint8_t currentMod = 0;
     uint8_t previousMod = 0;
 
-    //TODO merge remote report in
 
-#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
-#pragma message "compiling hid report in keyboard"
     std::array<uint8_t, 8> currentReport = {0};
     std::array<uint8_t, 8> previousReport = {0};
 
-    std::vector<std::pair<uint8_t, uint8_t>> momentaryBuffer;
-    std::vector<std::pair<uint8_t, uint8_t>> toggleBuffer;
-    std::vector<std::pair<uint8_t, uint8_t>> oneshotBuffer;
-
-    constexpr bool hub() { return true; }
+    buffer_t momentaryBuffer;
+    buffer_t toggleBuffer;
+    buffer_t oneshotBuffer;
 #else
+    std::vector<uint8_t> previousReport;
     std::vector<uint8_t> currentReport;
-    constexpr bool hub() { return false; }
 #endif 
 
     bool layerChanged = false;
@@ -68,10 +69,12 @@ namespace Keyboard
 
     std::array<std::array<PKey, MATRIX_COLS>, MATRIX_ROWS> keyboard {{ }};
 
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
     void updateModifier(uint8_t modifier)
     {
         currentMod |= 1 << (modifier - KC_LCTRL);
     }
+#endif
 
     void updateLayer(uint8_t layer)
     {
@@ -106,6 +109,7 @@ namespace Keyboard
         }
     }
 
+#if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
     //add a keycode into the report at a given index and merge extra
     //modifiers into the current modifiers
     void intoReport(uint8_t HID_Keycode, uint8_t extraModifiers, int index)
@@ -132,15 +136,34 @@ namespace Keyboard
         //therefore no change is made if there are no extra modifiers
         currentMod |= extraModifiers;
     }
+#endif
 
-    void intoBuffers(Keycode&& keycode)
+    bool handleLayer(uint8_t hid_keycode) 
     {
-        //if a non-null keycode active
-        auto reportPair = std::make_pair(keycode.getHIDKeycode(), keycode.getModifiers());
-        auto duration = keycode.getDuration();
-
-        if (reportPair.first != 0 || reportPair.second != 0)
+        if (hid_keycode >= LAYER_0 && hid_keycode <= LAYER_F)
         {
+            updateLayer(hid_keycode);    
+            return true;
+        }
+
+        return false;
+    }
+
+    /*
+     * sort the keycode of a potentially active
+     * key into one of the three buffers on the HUB or SINGLE
+     *
+     * or add the keycode into the current report on SPOKE
+     */
+    void intoBuffers(const Keycode& keycode)
+    {
+        //check if the keycode is even active or has meaning
+        if (keycode.isRelevant())
+        {
+            //extract the information from the keycode
+            auto reportPair = keycode.getReportPair();
+            auto duration = keycode.getDuration();
+
 #if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
             //momentary
             if (duration == 0)
@@ -169,7 +192,13 @@ namespace Keyboard
                 oneshotBuffer.push_back(reportPair);
             }
 #else
-            currentReport.push_back(keycode.encode());
+            //check if the keycode is a layer, if so, deal
+            //with it according to layer rules, otherwise
+            //add it into the report
+            if (!handleLayer(keycode.getHIDKeycode()))
+            {
+                currentReport.push_back(keycode.encode());
+            }
 #endif
         }
     }
@@ -185,13 +214,12 @@ namespace Keyboard
         }
     }
 
-
-
     void resetReport()
     {
-        currentMod = 0;
 
 #if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
+#pragma message "compiling something for hub/single"
+        currentMod = 0;
         currentReport = {0};
 #else
         currentReport.clear();
@@ -248,9 +276,11 @@ namespace Keyboard
             }
     }
 
-    //TODO: more efficient return?
 #if KEYBOARD_MODE == HUB || KEYBOARD_MODE == SINGLE
     std::array<uint8_t, 8> getCurrentReport()
+#else
+    std::vector<uint8_t> getCurrentReport()
+#endif
     {
         //save the current report as the last report
         previousReport = currentReport;
@@ -258,14 +288,6 @@ namespace Keyboard
 
         return currentReport;
     }
-#else
-    std::vector<uint8_t> getCurrentReport()
-    {
-        reportChanged = false;
-        return currentReport; 
-    }
-#endif
-
 
     bool getReportChanged()
     {
@@ -377,8 +399,22 @@ namespace Keyboard
         currentReport[7] = currentLayer;
 #else
         resetReport();
+        resetLayer();
+
+        reportEmpty = false;
+
+        previousLayer = currentLayer;
+
         updateBuffers(currentLayer);
-#endif
+
+        //the report is changed if the the previous and current reports
+        //aren't the same size or they are different
+        reportChanged = (previousReport.size() != currentReport.size()) ||
+            !std::equal(std::begin(previousReport), std::end(previousReport),
+                    std::begin(currentReport));
+
+        reportEmpty = currentReport.size() == 0;
+#endif 
     }
 
     void updateRemoteLayer(uint8_t layer)
@@ -396,7 +432,7 @@ namespace Keyboard
 
 #if KEYBOARD_MODE == HUB
     //only called on client 
-    void updateRemoteReport(std::vector<uint8_t> report)
+    void updateRemoteReport(const std::vector<uint8_t>& report)
     {
         for (auto& code : report)
         {

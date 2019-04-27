@@ -43,7 +43,6 @@ void Keypress::press(unsigned long delta, bool wasPress)
     checkActivations(delta, wasPress, true);
 }
 
-//returns a failure value (4) or the index of the first active activation
 bool Keypress::isActive()
 {
     //if the keypress is seen as active,

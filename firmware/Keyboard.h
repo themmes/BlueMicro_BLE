@@ -57,7 +57,7 @@ namespace Keyboard
     void updateRemoteLayer(uint8_t layer);
 
 #if KEYBOARD_MODE == HUB
-    void updateRemoteReport(std::vector<uint8_t> report);
+    void updateRemoteReport(const std::vector<uint8_t>& report);
 #endif
 };
 

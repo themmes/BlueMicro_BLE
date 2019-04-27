@@ -19,13 +19,19 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <cstdint>
 #include <tuple>
-#include <set>
 #include <array>
 #include <algorithm>
 
 #ifndef KEYCODE
 #define KEYCODE
 
+/*
+ * a wrapper around the hid keycodes, the extra modifiers and the duration
+ * of a keycode
+ *
+ * also contains static logic for coding a Keycode to
+ * and from a uint8_t
+ */
 class Keycode 
 {
     private:
@@ -45,15 +51,22 @@ class Keycode
         uint8_t getHIDKeycode() const;
         uint8_t getDuration() const;
 
+        //returns a pair of the hid keycode and extra modifiers
+        std::pair<uint8_t, uint8_t> getReportPair() const;
+
+        //whether the keycode should be handled or not
+        bool isRelevant() const;
+
         //allows for implicit conversion to a 
         //uint32_t 
         operator uint32_t() const;
 
-        friend bool operator<(const Keycode& l, const Keycode& r);
-
-        friend bool operator==(const Keycode& l, const Keycode& r);
-
+        //encode a Keycode into a uin8_t for 
+        //sending across bluetooth
         uint8_t encode() const;
+
+        //decode a uint8_t received from bluetooth
+        //into a full Keycode
         static Keycode decode(uint8_t kc);
 };
 

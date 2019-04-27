@@ -24,7 +24,15 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef KEYPRESS_H
 #define KEYPRESS_H
 
-using Method = std::vector<std::pair<bool, uint32_t>>;
+/*
+ * the vector for an activation method,
+ * the boolean signifies whether the uint16_t refers
+ * to a maximum amount of time (true) or minimum
+ *
+ * every even index of the array refers to a pressing
+ * action and vice versa
+ */
+using Method = std::vector<std::pair<bool, uint16_t>>;
 
 class Keypress 
 {
@@ -33,9 +41,15 @@ class Keypress
         Keypress(Method ms); 
         Keypress(Method ms, uint8_t actIndex);
 
+        /*
+         * presses/clears the key
+         */
         void clear(unsigned long delta, bool wasPress);
         void press(unsigned long delta, bool wasPress);
 
+        /*
+         * checks wether the key is active or not
+         */
         bool isActive();
     private:
         void checkActivations(unsigned long delta, bool wasPress, bool press);
