@@ -17,7 +17,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "keymap.h"
 
-#if KEYBOARD_MODE == SINGLE
+//both the left and the right keyboard side
+//have the same dimensions
+using r_layer_t = layer_t<4, 6>;
+using l_layer_t = layer_t<4, 6>;
+
 /*
  * everything that concerns the layout of the keyboard
  * should go into this function
@@ -27,22 +31,21 @@ matrix_t setupKeymap()
     //two commonly used activation methods
     //TODO move out into defaults
     Keypress hold { {{ {false, 100} }} };
-    Keypress toggle { {{ {false, 1}, {false, 1} }}, 1 };
+    Keypress once { {{ {false, 1}, {false, 1} }}, 1 };
 
-    VKey TG_SHIFT {toggle, TG(KC_LSHIFT)};
+    VKey TG_SHIFT {once, TG(KC_LSHIFT)};
 
     //all of these keys share the same toggling keypress
     //so that they work seamlessly across layers
-    VKey TG_L1 {toggle, TG(LAYER_1)};
+    VKey TG_L1 {once, TG(LAYER_1)};
+    VKey OS_SHIFT {once, OS(KC_LSHIFT)};
 
-    VKey OS_SHIFT {OS(KC_LSHIFT)};
     VKey HOLD_W {hold, KC_W};
 
     /*
-     * initiialize the default layer (QWERTY/PRESS) with the following
-     * keymap
+     * the two left side layers
      */
-    layer_t layer0 
+    l_layer_t l_layer0 
     {{
          {KC_ESC,    OS_SHIFT,          HOLD_W,  KC_E,    KC_R,     KC_T},
              {KC_TAB,    KC_NO,    KC_S,  KC_CAP_D, KC_F,     KC_G},
@@ -50,7 +53,7 @@ matrix_t setupKeymap()
              {KC_NO,     KC_NO,    KC_NO, TG_L1,     KC_E,  KC_LGUI}
      }};
 
-    layer_t layer1 
+    l_layer_t l_layer1 
     {{
          {KC_GRV,    KC_1,    KC_2,     KC_3,    KC_4,     KC_5},
              {KC_CAPS,   KC_F1,   KC_F2,    KC_F3,   KC_F4,    KC_F5}, 
@@ -58,15 +61,30 @@ matrix_t setupKeymap()
              {KC_NO,     KC_NO,   KC_NO,    TG_L1,   KC_E,     KC_LGUI}
      }};
 
+    /*
+     * the two right side layers
+     */
+    r_layer_t r_layer0 
+    {{
+         {KC_Y,    KC_U,          KC_I,  KC_O,    KC_P,     KC_BSPC},
+             {KC_H,    KC_J,    KC_K,  KC_L, KC_SCLN,   KC_QUOT},
+             {KC_LSHIFT, TG_SHIFT, KC_X,  KC_C,     KC_V,     KC_B},
+             {KC_NO,     KC_NO,    KC_NO, TG_L1,     KC_E,  KC_LGUI}
+     }};
+
+    r_layer_t r_layer1 
+    {{
+         {KC_6,    KC_7,    KC_8,     KC_9,    KC_4,     KC_5},
+             {KC_CAPS,   KC_F1,   KC_F2,    KC_F3,   KC_F4,    KC_F5}, 
+             {KC_LSHIFT, KC_F6,   KC_F7,    KC_F8,   KC_F9,    KC_F10}, 
+             {KC_NO,     KC_NO,   KC_NO,    TG_L1,   KC_E,     KC_LGUI}
+     }};
+
     //return an array of the two layers
-    return {{ layer0, layer1 }};
+    //based on which side if being compiled
+#if KEYBOARD_MODE == SINGLE || KEYBOARD_MODE == HUB
+    return {{ l_layer0, l_layer1 }};
+#else 
+    return {{ r_layer0, r_layer1 }};
+#endif 
 }
-
-#else
-/*
- * TODO Configure right side
- */
-
-error
-
-#endif /* KEYBOARD_SIDE */

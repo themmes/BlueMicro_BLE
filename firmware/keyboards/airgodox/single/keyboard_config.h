@@ -20,10 +20,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #ifndef KEYBOARD_CONFIG_H
 #define KEYBOARD_CONFIG_H
-
 #include "avr_mapping.h"
 
-#define KEYBOARD_MODE HUB
+#define KEYBOARD_MODE SINGLE
 
 #define DEVICE_NAME_R                         "Airgodox_R"                          /**< Name of device. Will be included in the advertising data. */
 #define DEVICE_NAME_L                         "Airgodox_L"                          /**< Name of device. Will be included in the advertising data. */
@@ -38,8 +37,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 /* key matrix size */
 #define MATRIX_ROWS 4
 #define MATRIX_COLS 6
-
-//#define MATRIX_METHODS 5
+#define MATRIX_METHODS 5
 
 #define MATRIX_ROW_PINS { B6, B2, B3, B1 }
 #define MATRIX_COL_PINS { B5, B4, E6, D7, C6, D4 }
