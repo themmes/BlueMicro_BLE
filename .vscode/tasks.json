@@ -1,0 +1,89 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "presentation": {
+        "panel": "new"
+      },
+    "tasks": [
+      {
+        "label": "Build BlueMicro All",
+        "type": "shell",
+        "windows": {
+          "command": "./build/windows/build.ps1 all"
+        },
+        "linux": {
+          "command": "./build/build-ubuntu all"
+        },
+        "osx": {
+          "command": "./build/macos/build-macos"
+        },
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Build BlueMicro single",
+        "type": "shell",
+        "windows": {
+          "command": "./utils/compile.bat"
+        },
+        "linux": {
+          "command": "./build/build-ubuntu all"
+        },
+        "osx": {
+          "command": "./build/macos/build-macos"
+        },
+        "group": "build",
+        "problemMatcher": [
+          {
+            "owner": "cpp",
+            "fileLocation": [
+              "relative",
+              "${workspaceFolder}\\firmware"
+            ],
+            "pattern": {
+              "regexp": "sketch\\\\(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+              "file": 1,
+              "line": 2,
+              "column": 3,
+              "severity": 4,
+              "message": 5
+            }
+          },
+          {
+            "owner": "h",
+            "fileLocation": [
+              "relative",
+              "${workspaceFolder}\\firmware"
+            ],
+            "pattern": {
+              "regexp": "sketch\\\\(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+              "file": 1,
+              "line": 2,
+              "column": 3,
+              "severity": 4,
+              "message": 5
+            }
+          },
+          {
+            "owner": "ino",
+            "fileLocation": [
+              "relative",
+              "${workspaceFolder}\\firmware"
+            ],
+            "pattern": {
+              "regexp": "firmware\\\\(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+              "file": 1,
+              "line": 2,
+              "column": 3,
+              "severity": 4,
+              "message": 5
+            }
+          }
+        ]
+      }
+    ]
+}

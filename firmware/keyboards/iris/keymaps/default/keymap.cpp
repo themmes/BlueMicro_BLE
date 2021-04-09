@@ -16,8 +16,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 */
 #include "keymap.h"
+#include "hardware_variants.h"
 
-#if KEYBOARD_SIDE == MASTER
+#if KEYBOARD_SIDE == SINGLE
 
 std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS> matrix =
     {KEYMAP(
@@ -31,10 +32,9 @@ std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS> matrix =
 void setupKeymap() {
         ;
     }
-#endif
 
 
-    #if KEYBOARD_SIDE == LEFT
+#elif KEYBOARD_SIDE == LEFT
 
 std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS> matrix =
     {KEYMAP(
@@ -87,9 +87,9 @@ void setupKeymap() {
     {
         for (int col = 0; col < MATRIX_COLS; ++col)
         {
-            matrix[row][col].addActivation(_L1, _PRESS, layer1[row][col]);
-            matrix[row][col].addActivation(_L2, _PRESS, layer2[row][col]);
-            matrix[row][col].addActivation(_L3, _PRESS, layer3[row][col]);
+            matrix[row][col].addActivation(_L1, Method::PRESS, layer1[row][col]);
+            matrix[row][col].addActivation(_L2, Method::PRESS, layer2[row][col]);
+            matrix[row][col].addActivation(_L3, Method::PRESS, layer3[row][col]);
         }
     }
 
@@ -147,9 +147,9 @@ void setupKeymap() {
     {
         for (int col = 0; col < MATRIX_COLS; ++col)
         {
-            matrix[row][col].addActivation(_L1, _PRESS, layer1[row][col]);
-            matrix[row][col].addActivation(_L2, _PRESS, layer2[row][col]);
-            matrix[row][col].addActivation(_L3, _PRESS, layer3[row][col]);
+            matrix[row][col].addActivation(_L1, Method::PRESS, layer1[row][col]);
+            matrix[row][col].addActivation(_L2, Method::PRESS, layer2[row][col]);
+            matrix[row][col].addActivation(_L3, Method::PRESS, layer3[row][col]);
         }
     }
 

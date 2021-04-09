@@ -17,11 +17,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 */
 #include "keymap.h"
 
-
-
-
-
-
 #if KEYBOARD_SIDE == LEFT
  
 std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS> matrix =
@@ -30,7 +25,7 @@ std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS> matrix =
      KC_TAB,  KC_A  , KC_S  , KC_D  , KC_F  , KC_G  ,
      KC_LSFT, KC_Z  , KC_X  , KC_C  , KC_V  , KC_B  ,
      KC_LCTL,KC_LALT,KC_LGUI, LAYER_3,LAYER_1,KC_SPC
-  ) };
+     )};
 
  
 void setupKeymap() {
@@ -71,9 +66,9 @@ KEYMAP(
     {
         for (int col = 0; col < MATRIX_COLS; ++col)
         {
-            matrix[row][col].addActivation(_L1, _PRESS, layer1[row][col]);
-            matrix[row][col].addActivation(_L2, _PRESS, layer2[row][col]);
-            matrix[row][col].addActivation(_L3, _PRESS, layer3[row][col]);
+            matrix[row][col].addActivation(_L1, Method::PRESS, layer1[row][col]);
+            matrix[row][col].addActivation(_L2, Method::PRESS, layer2[row][col]);
+            matrix[row][col].addActivation(_L3, Method::PRESS, layer3[row][col]);
         }
     }
 
@@ -84,8 +79,7 @@ KEYMAP(
  
 
 std::array<std::array<Key, MATRIX_COLS>, MATRIX_ROWS> matrix =
-    {KEYMAP(
-             KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_BSPC,
+    {KEYMAP( KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_BSPC,
              KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN, KC_QUOT,
              KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_RSHIFT,
              KC_SPC,LAYER_2,   KC_LEFT,KC_DOWN,    KC_UP, KC_RIGHT
@@ -128,9 +122,9 @@ KEYMAP(
     {
         for (int col = 0; col < MATRIX_COLS; ++col)
         {
-            matrix[row][col].addActivation(_L1, _PRESS, layer1[row][col]);
-            matrix[row][col].addActivation(_L2, _PRESS, layer2[row][col]);
-            matrix[row][col].addActivation(_L3, _PRESS, layer3[row][col]);
+            matrix[row][col].addActivation(_L1, Method::PRESS, layer1[row][col]);
+            matrix[row][col].addActivation(_L2, Method::PRESS, layer2[row][col]);
+            matrix[row][col].addActivation(_L3, Method::PRESS, layer3[row][col]);
         }
     }
 
